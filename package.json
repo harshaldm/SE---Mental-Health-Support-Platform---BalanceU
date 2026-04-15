@@ -2,9 +2,10 @@
   "name": "se---mental-health-support-platform---balanceu",
   "version": "1.0.0",
   "description": "A mental Health Support Platform for Colloge/ Institution level students",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server.js"
   },
   "repository": {
     "type": "git",
