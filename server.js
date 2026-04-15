@@ -3,7 +3,13 @@ const express = require('express');
 const cors = require('cors');
 
 const { sequelize, connectMongoDB, connectPostgres } = require('./config/db');
-const { Institute, User, CustomFormSchema } = require('./models');
+const { Institute, User, CustomFormSchema, StudentDetails, Appointment } = require('./models');
+
+// ─── Route Imports ───
+const instituteRoutes = require('./routes/institute');
+const authRoutes = require('./routes/auth');
+const counselorRoutes = require('./routes/counselor');
+const appointmentRoutes = require('./routes/appointment');
 
 const app = express();
 
@@ -15,6 +21,12 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'BalanceU API is running 🚀' });
 });
+
+// ─── API Routes ───
+app.use('/api/institutes', instituteRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/counselor', counselorRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // ─── Start Server ───
 const PORT = process.env.PORT || 5000;

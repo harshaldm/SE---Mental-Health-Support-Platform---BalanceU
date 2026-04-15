@@ -2,6 +2,7 @@ const { Sequelize } = require('sequelize');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
+
 // ─── PostgreSQL Connection (via Sequelize) ───
 const sequelize = new Sequelize(process.env.POSTGRES_URI, {
   dialect: 'postgres',
@@ -22,6 +23,8 @@ const connectMongoDB = async () => {
 
 // ─── PostgreSQL Auth Check ───
 const connectPostgres = async () => {
+  const uri = process.env.POSTGRES_URI || '';
+  console.log(`🔍 POSTGRES_URI starts with: "${uri.substring(0, 10)}..."`);
   await sequelize.authenticate();
   console.log('✅ PostgreSQL connected');
 };
