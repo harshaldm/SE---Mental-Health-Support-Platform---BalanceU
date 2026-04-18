@@ -1,6 +1,9 @@
 const { Op } = require('sequelize');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
+const Institute = require('../models/Institute');
+const sendNotification = require('../utils/sendEmail');
+const { newAppointmentTemplate, statusUpdateTemplate } = require('../utils/emailTemplates');
 
 // ─── Book Appointment (Student) ───
 // POST /api/appointments/book
@@ -34,6 +37,22 @@ const bookAppointment = async (req, res) => {
       status: 'pending',
       issue_description: issue_description || null,
     });
+
+    // ─── Send email notification to the Counselor (non-blocking) ───
+    const student = await User.findByPk(studentId);
+    const institute = await Institute.findByPk(studentInstituteId);
+
+    sendNotification(
+      counselor.email,
+      `New Session Request — ${institute ? institute.name : 'BalanceU'}`,
+      newAppointmentTemplate({
+        counselorEmail: counselor.email,
+        studentEmail: student.email,
+        instituteName: institute ? institute.name : 'Your Institute',
+        scheduledAt: appointment.scheduled_at,
+        issueDescription: appointment.issue_description,
+      })
+    );
 
     res.status(201).json({
       message: 'Appointment booked successfully',
@@ -69,6 +88,23 @@ const updateAppointmentStatus = async (req, res) => {
 
     appointment.status = status;
     await appointment.save();
+
+    // ─── Send email notification to the Student (non-blocking) ───
+    const student = await User.findByPk(appointment.student_id);
+    const counselor = await User.findByPk(counselorId);
+    const institute = await Institute.findByPk(req.user.institute_id);
+
+    sendNotification(
+      student.email,
+      `Appointment ${status === 'confirmed' ? 'Confirmed ✅' : 'Cancelled ❌'} — ${institute ? institute.name : 'BalanceU'}`,
+      statusUpdateTemplate({
+        studentEmail: student.email,
+        counselorEmail: counselor.email,
+        instituteName: institute ? institute.name : 'Your Institute',
+        scheduledAt: appointment.scheduled_at,
+        status,
+      })
+    );
 
     res.status(200).json({
       message: `Appointment ${status} successfully`,

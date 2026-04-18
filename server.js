@@ -3,13 +3,14 @@ const express = require('express');
 const cors = require('cors');
 
 const { sequelize, connectMongoDB, connectPostgres } = require('./config/db');
-const { Institute, User, CustomFormSchema, StudentDetails, Appointment } = require('./models');
+const { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails } = require('./models');
 
 // ─── Route Imports ───
 const instituteRoutes = require('./routes/institute');
 const authRoutes = require('./routes/auth');
 const counselorRoutes = require('./routes/counselor');
 const appointmentRoutes = require('./routes/appointment');
+const quizRoutes = require('./routes/quiz');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/institutes', instituteRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/counselor', counselorRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // ─── Start Server ───
 const PORT = process.env.PORT || 5000;
