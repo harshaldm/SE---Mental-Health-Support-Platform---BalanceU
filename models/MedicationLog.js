@@ -28,6 +28,11 @@ const medicationLogSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  status: {
+    type: String,
+    enum: ['pending', 'taken', 'missed'],
+    default: 'pending',
+  },
 }, {
   collection: 'medication_logs',
   timestamps: true,

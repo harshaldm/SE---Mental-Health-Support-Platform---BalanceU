@@ -21,6 +21,9 @@ const medicationRoutes = require('./routes/medication');
 // ─── Socket Handler ───
 const initializeSocket = require('./socket/chatHandler');
 
+// ─── Cron Jobs ───
+const initCronJobs = require('./jobs/cronJobs');
+
 const app = express();
 
 // ─── Create HTTP server and attach Socket.io ───
@@ -70,6 +73,9 @@ const startServer = async () => {
     await sequelize.sync();
 
     console.log('Databases connected successfully');
+
+    // ─── Initialize Background Jobs ───
+    initCronJobs(app);
 
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
