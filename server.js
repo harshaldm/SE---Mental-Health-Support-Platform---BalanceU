@@ -5,7 +5,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const { sequelize, connectMongoDB, connectPostgres } = require('./config/db');
-const { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message } = require('./models');
+const { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, Resource } = require('./models');
 
 // ─── Route Imports ───
 const instituteRoutes = require('./routes/institute');
@@ -14,6 +14,9 @@ const counselorRoutes = require('./routes/counselor');
 const appointmentRoutes = require('./routes/appointment');
 const quizRoutes = require('./routes/quiz');
 const chatRoutes = require('./routes/chat');
+const moodRoutes = require('./routes/mood');
+const resourceRoutes = require('./routes/resource');
+const medicationRoutes = require('./routes/medication');
 
 // ─── Socket Handler ───
 const initializeSocket = require('./socket/chatHandler');
@@ -33,6 +36,9 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// ─── Attach io to app so routes can emit events via req.app.get('io') ───
+app.set('io', io);
+
 // ─── Health Check Route ───
 app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'BalanceU API is running 🚀' });
@@ -45,6 +51,9 @@ app.use('/api/counselor', counselorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/mood', moodRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/meds', medicationRoutes);
 
 // ─── Initialize Socket.io ───
 initializeSocket(io);
