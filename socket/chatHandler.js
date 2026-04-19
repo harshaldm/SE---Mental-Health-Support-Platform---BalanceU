@@ -12,22 +12,22 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
  * Analyze a chat message for crisis signals using Gemini.
- * Returns 'Low', 'Moderate', or 'Crisis'.
+ * Returns 'LOW', 'MODERATE', or 'CRISIS'.
  */
 const triageMessage = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(
-      `Analyze this message from a student to a counselor. If it indicates immediate self-harm or severe crisis, return 'CRISIS'. If it's general stress, return 'MODERATE'. Otherwise, return 'LOW'. Return only the word.\n\nMessage: "${text}"`
+      `Analyze this student message: '${text}'. If it indicates self-harm or immediate crisis, return ONLY 'CRISIS'. If it shows high stress, return 'MODERATE'. Otherwise, return 'LOW'.`
     );
     const response = result.response.text().trim().toUpperCase();
 
-    if (response.includes('CRISIS')) return 'Crisis';
-    if (response.includes('MODERATE')) return 'Moderate';
-    return 'Low';
+    if (response.includes('CRISIS')) return 'CRISIS';
+    if (response.includes('MODERATE')) return 'MODERATE';
+    return 'LOW';
   } catch (error) {
     console.error('❌ Gemini triage failed:', error.message);
-    return 'Low'; // Default to Low if AI fails
+    return 'LOW'; // Default to LOW if AI fails
   }
 };
 
@@ -99,16 +99,33 @@ const initializeSocket = (io) => {
         const roomName = `appointment_${appointment_id}`;
         const trimmedText = text.trim();
 
-        // 1. Persist message to MongoDB (initially with default 'Low')
-        const message = await Message.create({
-          appointment_id,
-          sender_id: userId,
-          text: trimmedText,
-          timestamp: new Date(),
-          sentiment_flag: 'Low',
-        });
+        console.log(`\n[Socket] Message Received from User: ${userId}`);
 
-        // 2. Broadcast message to the room immediately (don't wait for AI)
+        let sentimentFlag = 'LOW'; // default
+
+        // 1. Run AI triage before saving for Student messages (Blocking Flow)
+        if (socket.user.role === 'Student') {
+          sentimentFlag = await triageMessage(trimmedText);
+        }
+        console.log(`[Socket] AI Sentiment Result: ${sentimentFlag}`);
+
+        // 2. Persist message to MongoDB with the AI result
+        let message;
+        try {
+          message = await Message.create({
+            appointment_id,
+            sender_id: userId,
+            text: trimmedText,
+            timestamp: new Date(),
+            sentiment_flag: sentimentFlag,
+          });
+          console.log('[Socket] Saved to Mongo: Success');
+        } catch (dbError) {
+          console.log('[Socket] Saved to Mongo: Fail', dbError.message);
+          throw dbError; // rethrow to be caught by the outer catch
+        }
+
+        // 3. Broadcast message to the room
         const messageData = {
           _id: message._id,
           appointment_id: message.appointment_id,
@@ -116,48 +133,32 @@ const initializeSocket = (io) => {
           sender_role: socket.user.role,
           text: message.text,
           timestamp: message.timestamp,
-          sentiment_flag: 'Low',
+          sentiment_flag: sentimentFlag,
         };
 
         io.to(roomName).emit('receive_message', messageData);
 
-        // 3. Run AI triage in the background (only for Student messages)
-        if (socket.user.role === 'Student') {
-          const sentimentFlag = await triageMessage(trimmedText);
+        // 4. Mailtrap Integration & Crisis Handling
+        if (sentimentFlag === 'CRISIS' && socket.user.role === 'Student') {
+          // Fetch appointment to find the counselor
+          const appointment = await Appointment.findByPk(appointment_id);
+          if (appointment) {
+            const student = await User.findByPk(userId);
+            const counselor = await User.findByPk(appointment.counselor_id);
+            const institute = await Institute.findByPk(socket.user.institute_id);
 
-          // Update the message in MongoDB with the AI result
-          await Message.findByIdAndUpdate(message._id, { sentiment_flag: sentimentFlag });
-
-          // If sentiment changed, emit an update to the room
-          if (sentimentFlag !== 'Low') {
-            io.to(roomName).emit('sentiment_update', {
-              message_id: message._id,
-              sentiment_flag: sentimentFlag,
+            // Send emergency_alert socket event to the room
+            io.to(roomName).emit('emergency_alert', {
+              type: 'CRISIS',
+              student_id: userId,
+              student_email: student ? student.email : 'Unknown',
+              message_text: trimmedText,
+              timestamp: message.timestamp,
             });
-          }
 
-          // 4. CRISIS handling — email + emergency alert
-          if (sentimentFlag === 'Crisis') {
-            console.log(`🚨 CRISIS detected from User ${userId} in room ${roomName}`);
-
-            // Fetch appointment to find the counselor
-            const appointment = await Appointment.findByPk(appointment_id);
-            if (appointment) {
-              const student = await User.findByPk(userId);
-              const counselor = await User.findByPk(appointment.counselor_id);
-              const institute = await Institute.findByPk(socket.user.institute_id);
-
-              // Send emergency_alert socket event to the room
-              io.to(roomName).emit('emergency_alert', {
-                type: 'CRISIS',
-                student_id: userId,
-                student_email: student ? student.email : 'Unknown',
-                message_text: trimmedText,
-                timestamp: message.timestamp,
-              });
-
-              // Send emergency email to the counselor (non-blocking)
-              if (counselor) {
+            // Send emergency email to the counselor
+            if (counselor) {
+              try {
                 sendNotification(
                   counselor.email,
                   `🚨 CRISIS ALERT — Immediate Attention Required — ${institute ? institute.name : 'BalanceU'}`,
@@ -168,9 +169,16 @@ const initializeSocket = (io) => {
                     timestamp: message.timestamp,
                   })
                 );
+                console.log('[Socket] Email Status: Sent');
+              } catch (emailError) {
+                console.log('[Socket] Email Status: Failed -', emailError.message);
               }
+            } else {
+              console.log('[Socket] Email Status: Not Sent (Counselor Not Found)');
             }
           }
+        } else {
+          console.log('[Socket] Email Status: Not Required');
         }
 
       } catch (error) {

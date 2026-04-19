@@ -20,8 +20,8 @@ const messageSchema = new mongoose.Schema({
   },
   sentiment_flag: {
     type: String,
-    enum: ['Low', 'Moderate', 'Crisis'],
-    default: 'Low',
+    enum: ['LOW', 'MODERATE', 'CRISIS'],
+    default: 'LOW',
   },
 }, {
   collection: 'messages',
