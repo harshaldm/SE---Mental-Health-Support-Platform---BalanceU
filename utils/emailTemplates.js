@@ -137,5 +137,89 @@ const statusUpdateTemplate = ({ studentEmail, counselorEmail, instituteName, sch
   `;
   return wrapTemplate(body);
 };
+/**
+ * Email sent to Counselor when a student shares a quiz assessment.
+ */
+const sharedAssessmentTemplate = ({ studentEmail, instituteName, quizType, riskLevel, totalScore }) => {
+  const isHighRisk = ['Moderate', 'Moderately Severe', 'Severe'].includes(riskLevel);
+  const riskColor = isHighRisk ? '#dc2626' : '#f59e0b';
+  const riskBg = isHighRisk ? '#fee2e2' : '#fef3c7';
+  const riskIcon = isHighRisk ? '🚨' : '⚠️';
 
-module.exports = { newAppointmentTemplate, statusUpdateTemplate };
+  const body = `
+    <h2 style="color:#1f2937; margin:0 0 16px;">${riskIcon} New Shared Assessment</h2>
+    <p style="color:#4b5563; line-height:1.6; margin:0 0 20px;">
+      A student at <strong>${instituteName}</strong> has shared a new ${isHighRisk ? '<strong style="color:#dc2626;">High-Risk</strong>' : ''} assessment with you.
+    </p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="background:#f9fafb; border-radius:8px; margin-bottom:20px;">
+      <tr>
+        <td style="color:#6b7280; font-size:13px; width:130px;">Student</td>
+        <td style="color:#1f2937; font-weight:600;">${studentEmail}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Assessment</td>
+        <td style="color:#1f2937; font-weight:600;">${quizType}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Score</td>
+        <td style="color:#1f2937; font-weight:600;">${totalScore}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Risk Level</td>
+        <td>
+          <span style="background:${riskBg}; color:${riskColor}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+            ${riskIcon} ${riskLevel}
+          </span>
+        </td>
+      </tr>
+    </table>
+    <p style="color:#6b7280; font-size:14px; margin:0;">
+      Please log in to your BalanceU dashboard to review the full report and AI analysis.
+    </p>
+  `;
+  return wrapTemplate(body);
+};
+
+module.exports = { newAppointmentTemplate, statusUpdateTemplate, sharedAssessmentTemplate, crisisAlertTemplate };
+
+/**
+ * Email sent to Counselor when a student message is flagged as CRISIS by AI triage.
+ */
+function crisisAlertTemplate({ studentEmail, instituteName, messageText, timestamp }) {
+  const body = `
+    <h2 style="color:#dc2626; margin:0 0 16px;">🚨 CRISIS ALERT — Immediate Attention Required</h2>
+    <p style="color:#4b5563; line-height:1.6; margin:0 0 20px;">
+      A message from a student at <strong>${instituteName}</strong> has been flagged as a
+      <strong style="color:#dc2626;">potential crisis</strong> by our AI triage system.
+    </p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="background:#fef2f2; border: 1px solid #fecaca; border-radius:8px; margin-bottom:20px;">
+      <tr>
+        <td style="color:#6b7280; font-size:13px; width:130px;">Student</td>
+        <td style="color:#1f2937; font-weight:600;">${studentEmail}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Flagged Message</td>
+        <td style="color:#991b1b; font-style:italic;">"${messageText}"</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Time</td>
+        <td style="color:#1f2937; font-weight:600;">${new Date(timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Severity</td>
+        <td>
+          <span style="background:#fee2e2; color:#dc2626; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+            🚨 CRISIS
+          </span>
+        </td>
+      </tr>
+    </table>
+    <p style="color:#dc2626; font-size:14px; font-weight:600; margin:0 0 8px;">
+      Please reach out to this student immediately.
+    </p>
+    <p style="color:#6b7280; font-size:13px; margin:0;">
+      If the student is in immediate danger, contact emergency services. Log in to your BalanceU dashboard to respond.
+    </p>
+  `;
+  return wrapTemplate(body);
+}

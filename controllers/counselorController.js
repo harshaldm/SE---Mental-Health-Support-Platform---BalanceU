@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const StudentDetails = require('../models/StudentDetails');
+const QuizResult = require('../models/QuizResult');
+const AssessmentDetails = require('../models/AssessmentDetails');
 
 // ─── Get Students for Counselor's Institute ───
 // GET /api/counselor/students
@@ -76,4 +78,72 @@ const getStudents = async (req, res) => {
   }
 };
 
-module.exports = { getStudents };
+// ─── Get Shared Reports for a Student ───
+// GET /api/counselor/reports/:student_id
+// Hybrid fetch: PostgreSQL (shared quiz results) + MongoDB (responses + AI summaries)
+const getStudentReports = async (req, res) => {
+  try {
+    const counselorInstituteId = req.user.institute_id;
+    const studentId = parseInt(req.params.student_id, 10);
+
+    // 1. Verify the student exists and belongs to the same institute
+    const student = await User.findOne({
+      where: { id: studentId, role: 'Student', institute_id: counselorInstituteId },
+      attributes: ['id', 'email'],
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found at your institute' });
+    }
+
+    // 2. Fetch all shared quiz results from PostgreSQL
+    const sharedResults = await QuizResult.findAll({
+      where: { user_id: studentId, shared_with_counselor: true },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (sharedResults.length === 0) {
+      return res.status(200).json({
+        student: { id: student.id, email: student.email },
+        message: 'No shared assessments found',
+        reports: [],
+      });
+    }
+
+    // 3. Fetch matching assessment details from MongoDB
+    const quizResultIds = sharedResults.map(r => r.id);
+    const detailsDocs = await AssessmentDetails.find({
+      quiz_result_id: { $in: quizResultIds },
+    });
+
+    // Build lookup map: quiz_result_id → assessment details
+    const detailsMap = {};
+    detailsDocs.forEach(doc => {
+      detailsMap[doc.quiz_result_id] = {
+        question_responses: doc.question_responses,
+        ai_sentiment_analysis: doc.ai_sentiment_analysis,
+      };
+    });
+
+    // 4. Merge into a combined report list
+    const reports = sharedResults.map(result => ({
+      id: result.id,
+      quiz_type: result.quiz_type,
+      total_score: result.total_score,
+      risk_level: result.risk_level,
+      taken_at: result.createdAt,
+      details: detailsMap[result.id] || null,
+    }));
+
+    res.status(200).json({
+      student: { id: student.id, email: student.email },
+      total: reports.length,
+      reports,
+    });
+  } catch (error) {
+    console.error('❌ Error fetching student reports:', error.message);
+    res.status(500).json({ error: 'Failed to fetch student reports' });
+  }
+};
+
+module.exports = { getStudents, getStudentReports };

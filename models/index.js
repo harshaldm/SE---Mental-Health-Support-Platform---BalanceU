@@ -5,5 +5,6 @@ const StudentDetails = require('./StudentDetails');
 const Appointment = require('./Appointment');
 const QuizResult = require('./QuizResult');
 const AssessmentDetails = require('./AssessmentDetails');
+const Message = require('./Message');
 
-module.exports = { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails };
+module.exports = { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message };

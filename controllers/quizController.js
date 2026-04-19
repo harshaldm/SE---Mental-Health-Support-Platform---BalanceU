@@ -1,6 +1,10 @@
 const QuizResult = require('../models/QuizResult');
 const AssessmentDetails = require('../models/AssessmentDetails');
+const User = require('../models/User');
+const Institute = require('../models/Institute');
 const { analyzeResponses } = require('../utils/geminiAnalysis');
+const sendNotification = require('../utils/sendEmail');
+const { sharedAssessmentTemplate } = require('../utils/emailTemplates');
 
 // ─── Risk Level Scales ───
 // PHQ-9: 0-4 Minimal, 5-9 Mild, 10-14 Moderate, 15-19 Moderately Severe, 20-27 Severe
@@ -90,6 +94,7 @@ const shareWithCounselor = async (req, res) => {
   try {
     const quizId = parseInt(req.params.id, 10);
     const userId = req.user.id;
+    const userInstituteId = req.user.institute_id;
 
     // Find the quiz result and ensure it belongs to this student
     const quizResult = await QuizResult.findOne({
@@ -102,6 +107,27 @@ const shareWithCounselor = async (req, res) => {
 
     quizResult.shared_with_counselor = true;
     await quizResult.save();
+
+    // ─── Send email notification to a counselor at the same institute (non-blocking) ───
+    const student = await User.findByPk(userId);
+    const institute = await Institute.findByPk(userInstituteId);
+    const counselor = await User.findOne({
+      where: { institute_id: userInstituteId, role: 'Counselor' },
+    });
+
+    if (counselor) {
+      sendNotification(
+        counselor.email,
+        `${quizResult.risk_level === 'Severe' || quizResult.risk_level === 'Moderately Severe' ? '🚨 ' : ''}New Shared Assessment — ${institute ? institute.name : 'BalanceU'}`,
+        sharedAssessmentTemplate({
+          studentEmail: student.email,
+          instituteName: institute ? institute.name : 'Your Institute',
+          quizType: quizResult.quiz_type,
+          riskLevel: quizResult.risk_level,
+          totalScore: quizResult.total_score,
+        })
+      );
+    }
 
     res.status(200).json({
       message: 'Assessment shared with your counselor',
