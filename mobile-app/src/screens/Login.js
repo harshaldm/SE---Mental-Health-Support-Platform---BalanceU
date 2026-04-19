@@ -19,16 +19,16 @@ export default function Login({ setLoggedIn }) {
         <Text style={globalStyles.textBody}>Sign in to BalanceU App</Text>
 
         <View style={styles.form}>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Email Address" 
+          <TextInput
+            style={styles.input}
+            placeholder="Email Address"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             value={email}
             onChangeText={setEmail}
           />
-          <TextInput 
-            style={styles.input} 
-            placeholder="Password" 
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             secureTextEntry
             value={password}
@@ -37,7 +37,7 @@ export default function Login({ setLoggedIn }) {
           <TouchableOpacity style={globalStyles.buttonPrimary} onPress={handleLogin}>
             <Text style={globalStyles.buttonText}>Sign In</Text>
           </TouchableOpacity>
-        </form>
+        </View> {/* Fixed: Changed </form> to </View> */}
       </View>
     </View>
   );
@@ -54,7 +54,6 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.surfaceContainerLow,
     padding: 32,
     borderRadius: designTokens.radius.xl,
-    // Note: React Native shadow replacement for the "Ambient Shadow"
     shadowColor: designTokens.colors.onSurface,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.06,
