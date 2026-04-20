@@ -3,9 +3,8 @@ const { sequelize } = require('../config/db');
 
 const Institute = sequelize.define('Institute', {
   id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING,
     primaryKey: true,
-    autoIncrement: true,
   },
   name: {
     type: DataTypes.STRING,
@@ -21,6 +20,10 @@ const Institute = sequelize.define('Institute', {
   },
   contact_info: {
     type: DataTypes.STRING,
+    allowNull: true,
+  },
+  registration_schema: {
+    type: DataTypes.JSONB,
     allowNull: true,
   },
 }, {

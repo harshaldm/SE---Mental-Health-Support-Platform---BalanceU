@@ -28,7 +28,7 @@ const resourceSchema = new mongoose.Schema({
     index: true,
   },
   institute_id: {
-    type: Number, // References the PostgreSQL Institute.id
+    type: String, // References the PostgreSQL Institute.id
     required: true,
     index: true,
   },

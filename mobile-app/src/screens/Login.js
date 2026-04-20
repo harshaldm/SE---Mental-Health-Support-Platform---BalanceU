@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { designTokens, globalStyles } from '../globalStyles';
 
-export default function Login({ setLoggedIn }) {
+export default function Login({ setLoggedIn, setShowRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -37,7 +37,10 @@ export default function Login({ setLoggedIn }) {
           <TouchableOpacity style={globalStyles.buttonPrimary} onPress={handleLogin}>
             <Text style={globalStyles.buttonText}>Sign In</Text>
           </TouchableOpacity>
-        </View> {/* Fixed: Changed </form> to </View> */}
+          <TouchableOpacity onPress={() => setShowRegister && setShowRegister(true)} style={{ alignItems: 'center' }}>
+            <Text style={{ color: designTokens.colors.primary, fontWeight: 'bold' }}>Create an Account</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

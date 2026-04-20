@@ -4,11 +4,13 @@ const {
   createInstitute,
   saveFormSchema,
   getFormSchema,
+  getListInstitutes
 } = require('../controllers/instituteController');
 
 // ─── Institute Routes ───
 router.post('/', createInstitute);
-router.post('/:id/form-schema', saveFormSchema);
+router.get('/list', getListInstitutes);
+router.patch('/schema', saveFormSchema);
 router.get('/:id/form-schema', getFormSchema);
 
 module.exports = router;

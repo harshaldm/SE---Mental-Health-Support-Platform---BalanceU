@@ -35,9 +35,12 @@ const io = new Server(server, {
   },
 });
 
+const path = require('path');
+
 // ─── Middleware ───
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ─── Attach io to app so routes can emit events via req.app.get('io') ───
 app.set('io', io);
@@ -57,6 +60,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/meds', medicationRoutes);
+app.use('/api/admin', require('./routes/admin'));
 
 // ─── Initialize Socket.io ───
 initializeSocket(io);
@@ -70,7 +74,7 @@ const startServer = async () => {
     await connectMongoDB();
 
     // Sync Sequelize models with the database (creates tables if they don't exist)
-    await sequelize.sync();
+    await sequelize.sync({ alter: true });
 
     console.log('Databases connected successfully');
 

@@ -11,7 +11,7 @@ const prescriptionSchema = new mongoose.Schema({
     required: true,
   },
   institute_id: {
-    type: Number, // References PostgreSQL Institute.id
+    type: String, // References PostgreSQL Institute.id
     required: true,
   },
   med_name: {

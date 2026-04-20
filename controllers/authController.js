@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { nanoid } = require('nanoid');
 const User = require('../models/User');
 const Institute = require('../models/Institute');
 const StudentDetails = require('../models/StudentDetails');
@@ -11,27 +12,33 @@ const SALT_ROUNDS = 10;
 // POST /api/auth/register-admin
 const registerAdmin = async (req, res) => {
   try {
-    const { email, password, institute_id, role } = req.body;
+    const { email, password, institute_name, institute_type, custom_institute_type } = req.body;
 
-    if (!email || !password || !institute_id) {
-      return res.status(400).json({ error: 'email, password, and institute_id are required' });
+    if (!email || !password || !institute_name || !institute_type) {
+      return res.status(400).json({ error: 'email, password, institute_name, and institute_type are required' });
     }
 
-    // Validate and default role
-    const allowedRoles = ['Admin', 'Counselor', 'Student'];
-    const assignedRole = allowedRoles.includes(role) ? role : 'Student';
+    // Role is always Admin
+    const assignedRole = 'Admin';
 
-    // Verify institute exists
-    const institute = await Institute.findByPk(institute_id);
-    if (!institute) {
-      return res.status(404).json({ error: 'Institute not found' });
-    }
+    // Determine final institute type
+    const finalType = institute_type === 'Others' && custom_institute_type ? custom_institute_type : institute_type;
 
     // Check for duplicate email
     const existing = await User.findOne({ where: { email } });
     if (existing) {
       return res.status(409).json({ error: 'Email already registered' });
     }
+
+    // Generate unique alphanumeric institute_id
+    const generatedInstituteId = nanoid(10);
+
+    // Create the Institute Foundation record
+    const institute = await Institute.create({
+      id: generatedInstituteId,
+      name: institute_name,
+      type: finalType,
+    });
 
     // Hash password
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -40,12 +47,13 @@ const registerAdmin = async (req, res) => {
       email,
       password_hash,
       role: assignedRole,
-      institute_id,
+      institute_id: generatedInstituteId,
     });
 
     res.status(201).json({
-      message: `${assignedRole} registered successfully`,
+      message: `${assignedRole} registered successfully. Institute Foundation Created.`,
       user: { id: user.id, email: user.email, role: user.role, institute_id: user.institute_id },
+      institute,
     });
   } catch (error) {
     console.error('❌ Error registering admin:', error.message);
@@ -75,54 +83,27 @@ const registerStudent = async (req, res) => {
       return res.status(409).json({ error: 'Email already registered' });
     }
 
-    // Validate custom_data against the institute's form schema (if one exists)
-    if (custom_data && typeof custom_data === 'object') {
-      const formSchema = await CustomFormSchema.findOne({ institute_id });
-      if (formSchema && Array.isArray(formSchema.fields)) {
-        const expectedKeys = formSchema.fields.map(f => f.label);
-        const submittedKeys = Object.keys(custom_data);
-        const missingKeys = expectedKeys.filter(k => !submittedKeys.includes(k));
-        if (missingKeys.length > 0) {
-          return res.status(400).json({
-            error: 'Missing required custom fields',
-            missing: missingKeys,
-          });
-        }
-      }
-    }
-
     // Hash password
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // 1. Save basic user info to PostgreSQL
+    // Save basic user info and custom details to PostgreSQL directly
     const student = await User.create({
       email,
       password_hash,
       role: 'Student',
       institute_id,
+      profile_metadata: custom_data && typeof custom_data === 'object' ? custom_data : null,
     });
-
-    // 2. Save custom form responses to MongoDB
-    let details = null;
-    if (custom_data && typeof custom_data === 'object') {
-      try {
-        details = await StudentDetails.create({
-          user_id: student.id,
-          institute_id,
-          data: custom_data,
-        });
-      } catch (mongoError) {
-        // Rollback: remove the PostgreSQL user if MongoDB save fails
-        await student.destroy();
-        console.error('❌ MongoDB save failed, rolled back PostgreSQL user:', mongoError.message);
-        return res.status(500).json({ error: 'Registration failed — could not save custom data' });
-      }
-    }
 
     res.status(201).json({
       message: 'Student registered successfully',
-      user: { id: student.id, email: student.email, role: student.role, institute_id: student.institute_id },
-      student_details: details,
+      user: { 
+        id: student.id, 
+        email: student.email, 
+        role: student.role, 
+        institute_id: student.institute_id,
+        profile_metadata: student.profile_metadata 
+      },
     });
   } catch (error) {
     console.error('❌ Error registering student:', error.message);
@@ -190,4 +171,54 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { registerAdmin, registerStudent, login, getMe };
+// ─── Register Counselor (Uses Multer) ───
+// POST /api/auth/register-counselor
+const registerCounselor = async (req, res) => {
+  try {
+    const { email, password, full_name, institute_id, specialization, experience, bio } = req.body;
+
+    if (!email || !password || !institute_id || !full_name) {
+      return res.status(400).json({ error: 'email, password, full_name, and institute_id are required' });
+    }
+
+    // Check for duplicate email
+    const existing = await User.findOne({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    // Handle files via multer (`req.files`)
+    let documents = {
+      profile_pic: req.files?.profile_pic?.[0]?.filename || null,
+      degree: req.files?.degree?.[0]?.filename || null,
+      license: req.files?.license?.[0]?.filename || null,
+    };
+
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    const counselor = await User.create({
+      email,
+      password_hash,
+      role: 'Counselor',
+      institute_id,
+      is_hired: false, // Must be approved by Admin
+      profile_metadata: {
+        full_name,
+        specialization,
+        experience,
+        bio,
+        documents
+      }
+    });
+
+    res.status(201).json({
+      message: 'Counselor application submitted successfully. Pending Admin approval.',
+      user: { id: counselor.id, email: counselor.email, role: counselor.role, is_hired: false }
+    });
+  } catch (error) {
+    console.error('❌ Error registering counselor:', error.message);
+    res.status(500).json({ error: 'Failed to submit counselor application' });
+  }
+};
+
+module.exports = { registerAdmin, registerStudent, registerCounselor, login, getMe };

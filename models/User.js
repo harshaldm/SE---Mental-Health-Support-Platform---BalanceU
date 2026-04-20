@@ -25,12 +25,20 @@ const User = sequelize.define('User', {
     allowNull: false,
   },
   institute_id: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.STRING,
     allowNull: true,
     references: {
       model: Institute,
       key: 'id',
     },
+  },
+  profile_metadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
+  is_hired: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   },
 }, {
   tableName: 'users',

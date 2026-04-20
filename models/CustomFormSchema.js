@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const customFormSchemaSchema = new mongoose.Schema({
   institute_id: {
-    type: Number,
+    type: String,
     required: true,
     index: true,
   },

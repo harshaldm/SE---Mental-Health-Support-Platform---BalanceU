@@ -1,5 +1,4 @@
 const Institute = require('../models/Institute');
-const CustomFormSchema = require('../models/CustomFormSchema');
 
 // ─── Create Institute ───
 // POST /api/institutes
@@ -11,6 +10,7 @@ const createInstitute = async (req, res) => {
       return res.status(400).json({ error: 'name and type are required' });
     }
 
+    // Usually ID is predefined now, but leaving this for legacy compat
     const institute = await Institute.create({ name, type, address, contact_info });
 
     res.status(201).json({
@@ -23,33 +23,42 @@ const createInstitute = async (req, res) => {
   }
 };
 
+// ─── Get List of Institutes ───
+// GET /api/institutes/list
+const getListInstitutes = async (req, res) => {
+  try {
+    const institutes = await Institute.findAll({
+      attributes: ['id', 'name', 'type']
+    });
+    res.status(200).json({ institutes });
+  } catch (error) {
+    console.error('❌ Error fetching institutes list:', error.message);
+    res.status(500).json({ error: 'Failed to fetch institutes list' });
+  }
+};
+
 // ─── Save Form Schema ───
-// POST /api/institutes/:id/form-schema
+// PATCH /api/institutes/schema
 const saveFormSchema = async (req, res) => {
   try {
-    const instituteId = parseInt(req.params.id, 10);
-    const { fields } = req.body;
+    const { institute_id, schema } = req.body; // Expect JSON array in schema
 
-    if (!fields || typeof fields !== 'object') {
-      return res.status(400).json({ error: 'fields must be a valid JSON object' });
+    if (!institute_id || !schema || !Array.isArray(schema)) {
+      return res.status(400).json({ error: 'institute_id and schema (array) are required' });
     }
 
-    // Verify institute exists in PostgreSQL
-    const institute = await Institute.findByPk(instituteId);
+    const institute = await Institute.findByPk(institute_id);
     if (!institute) {
       return res.status(404).json({ error: 'Institute not found' });
     }
 
-    // Upsert: update existing schema or create a new one
-    const schema = await CustomFormSchema.findOneAndUpdate(
-      { institute_id: instituteId },
-      { institute_id: instituteId, fields },
-      { upsert: true, new: true, runValidators: true }
-    );
+    // Save JSONB schema directly to Postgres
+    institute.registration_schema = schema;
+    await institute.save();
 
     res.status(200).json({
       message: 'Form schema saved successfully',
-      schema,
+      schema: institute.registration_schema,
     });
   } catch (error) {
     console.error('❌ Error saving form schema:', error.message);
@@ -61,13 +70,15 @@ const saveFormSchema = async (req, res) => {
 // GET /api/institutes/:id/form-schema
 const getFormSchema = async (req, res) => {
   try {
-    const instituteId = parseInt(req.params.id, 10);
+    const instituteId = req.params.id;
 
-    const schema = await CustomFormSchema.findOne({ institute_id: instituteId });
-    if (!schema) {
-      return res.status(404).json({ error: 'No form schema found for this institute' });
+    const institute = await Institute.findByPk(instituteId);
+    if (!institute) {
+      return res.status(404).json({ error: 'Institute not found' });
     }
 
+    // Default to empty array if no schema defined yet
+    const schema = institute.registration_schema || [];
     res.status(200).json({ schema });
   } catch (error) {
     console.error('❌ Error fetching form schema:', error.message);
@@ -75,4 +86,4 @@ const getFormSchema = async (req, res) => {
   }
 };
 
-module.exports = { createInstitute, saveFormSchema, getFormSchema };
+module.exports = { createInstitute, getListInstitutes, saveFormSchema, getFormSchema };
