@@ -10,6 +10,7 @@ import CounselorRegister from './pages/CounselorRegister';
 import CounselorDashboard from './pages/CounselorDashboard';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
+import StudentDashboard from './pages/StudentDashboard';
 
 const theme = createTheme({
   palette: {
@@ -54,6 +55,14 @@ function App() {
             <Route path="/register/student" element={<StudentRegister />} />
             <Route path="/register/counselor" element={<CounselorRegister />} />
             <Route path="/register/admin" element={<RegisterAdmin />} />
+            <Route 
+              path="/student/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['Student']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/counselor/dashboard" 
               element={

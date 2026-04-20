@@ -33,7 +33,8 @@ export default function AdminDashboard() {
         const res = await axios.get(`http://localhost:5000/api/admin/pending-counselors`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setPendingCounselors(res.data.counselors);
+        const filteredCounselors = res.data.counselors.filter(c => String(c.institute_id) === String(user.institute_id));
+        setPendingCounselors(filteredCounselors);
       } catch (error) {
         console.error('Failed to fetch pending counselors', error);
       }
@@ -98,7 +99,10 @@ export default function AdminDashboard() {
         {/* Editor Pane */}
         <Grid item xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 4, borderRadius: '2rem', bgcolor: 'background.paper' }}>
-            <Typography variant="h5" sx={{ mb: 3 }}>Add New Field</Typography>
+            <Typography variant="h5" sx={{ mb: 1 }}>Add New Field</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Note: Basic fields (Full Name, Email, Password, Confirm Password, and Select Your Institute) are included by default. You only need to add custom institutional fields (e.g., Roll No, Hostel, Course) below.
+            </Typography>
             
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField 

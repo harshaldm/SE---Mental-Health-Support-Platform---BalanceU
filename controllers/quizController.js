@@ -34,6 +34,10 @@ const submitQuiz = async (req, res) => {
   try {
     const userId = req.user.id;
     const { quiz_type, question_responses } = req.body;
+    console.log('─── 📝 Incoming Quiz Submission ───');
+    console.log('Student ID:', userId);
+    console.log('Quiz Type:', quiz_type);
+    console.log('Body Snapshot:', JSON.stringify(req.body, null, 2));
 
     // Validate inputs
     const allowedTypes = ['PHQ-9', 'GAD-7'];
@@ -61,16 +65,33 @@ const submitQuiz = async (req, res) => {
     });
 
     // 4. Run Gemini AI sentiment analysis on text responses
-    const aiSummary = await analyzeResponses(question_responses);
+    const aiData = await analyzeResponses(question_responses);
+    let finalSummary = null;
+    let finalRiskLevel = riskLevel;
+
+    if (aiData) {
+      console.log('─── 🤖 Gemini Analysis Received ───');
+      console.log('AI Summary:', aiData.summary);
+      console.log('AI Risk Level:', aiData.riskLevel);
+      finalSummary = aiData.summary || null;
+      if (aiData.riskLevel) {
+      finalSummary = aiData.summary || null;
+      if (aiData.riskLevel) {
+        finalRiskLevel = aiData.riskLevel;
+        // Update PostgreSQL with the new AI-assessed risk level
+        quizResult.risk_level = finalRiskLevel;
+        await quizResult.save();
+      }
+    }
 
     // 5. Save detailed responses & AI analysis to MongoDB
     const assessmentDetails = await AssessmentDetails.create({
       quiz_result_id: quizResult.id,
       question_responses,
-      ai_sentiment_analysis: aiSummary,
+      ai_sentiment_analysis: finalSummary,
     });
 
-    res.status(201).json({
+    const responseBody = {
       message: 'Assessment submitted successfully',
       result: {
         id: quizResult.id,
@@ -79,9 +100,15 @@ const submitQuiz = async (req, res) => {
         risk_level: quizResult.risk_level,
         shared_with_counselor: quizResult.shared_with_counselor,
       },
-      ai_sentiment_analysis: aiSummary,
+      ai_sentiment_analysis: finalSummary,
       details_id: assessmentDetails._id,
-    });
+    };
+
+    console.log('─── ✅ Final Response Packaged ───');
+    console.log('Risk Level:', responseBody.result.risk_level);
+    console.log('AI Summary Present:', !!responseBody.ai_sentiment_analysis);
+
+    res.status(201).json(responseBody);
   } catch (error) {
     console.error('❌ Error submitting quiz:', error.message);
     res.status(500).json({ error: 'Failed to submit assessment' });

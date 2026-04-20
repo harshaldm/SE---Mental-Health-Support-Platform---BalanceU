@@ -12,7 +12,7 @@ const getPendingCounselors = async (req, res) => {
         role: 'Counselor',
         is_hired: false
       },
-      attributes: ['id', 'email', 'profile_metadata', 'createdAt']
+      attributes: ['id', 'email', 'institute_id', 'profile_metadata', 'createdAt']
     });
 
     res.status(200).json({ counselors });

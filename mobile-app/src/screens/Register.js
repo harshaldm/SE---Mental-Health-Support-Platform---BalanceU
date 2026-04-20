@@ -22,6 +22,7 @@ export default function Register({ setLoggedIn }) {
   const [selectedInstitute, setSelectedInstitute] = useState('');
   const [schema, setSchema] = useState([]);
   
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -61,6 +62,7 @@ export default function Register({ setLoggedIn }) {
         body: JSON.stringify({
           email,
           password,
+          full_name: fullName,
           institute_id: selectedInstitute,
           custom_data: customData
         })
@@ -96,6 +98,14 @@ export default function Register({ setLoggedIn }) {
         </View>
 
         <View style={styles.formSection}>
+          <TextInput 
+            style={styles.input} 
+            placeholder="Full Legal Name" 
+            placeholderTextColor={designTokens.colors.onSurfaceVariant}
+            value={fullName}
+            onChangeText={setFullName}
+            autoCapitalize="words"
+          />
           <TextInput 
             style={styles.input} 
             placeholder="Official College Email" 

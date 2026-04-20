@@ -65,10 +65,10 @@ const registerAdmin = async (req, res) => {
 // POST /api/auth/register-student
 const registerStudent = async (req, res) => {
   try {
-    const { email, password, institute_id, custom_data } = req.body;
+    const { email, password, institute_id, full_name, custom_data } = req.body;
 
-    if (!email || !password || !institute_id) {
-      return res.status(400).json({ error: 'email, password, and institute_id are required' });
+    if (!email || !password || !institute_id || !full_name) {
+      return res.status(400).json({ error: 'email, password, full_name, and institute_id are required' });
     }
 
     // Verify institute exists
@@ -92,7 +92,10 @@ const registerStudent = async (req, res) => {
       password_hash,
       role: 'Student',
       institute_id,
-      profile_metadata: custom_data && typeof custom_data === 'object' ? custom_data : null,
+      profile_metadata: {
+        full_name,
+        ...(custom_data && typeof custom_data === 'object' ? custom_data : {})
+      },
     });
 
     res.status(201).json({

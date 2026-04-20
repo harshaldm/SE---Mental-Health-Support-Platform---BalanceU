@@ -12,6 +12,7 @@ export default function StudentRegister() {
   const [schema, setSchema] = useState([]);
   
   // Basic Auth
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,7 +57,7 @@ export default function StudentRegister() {
   const isPasswordMatch = password && password === confirmPassword;
   
   // Basic validation that all hardcoded generic fields are valid
-  const isValid = selectedInstitute && isEmailValid && isPasswordMatch && email.length > 0;
+  const isValid = selectedInstitute && isEmailValid && isPasswordMatch && email.length > 0 && fullName.trim().length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,6 +67,7 @@ export default function StudentRegister() {
       await axios.post('http://localhost:5000/api/auth/register-student', {
         email,
         password,
+        full_name: fullName,
         institute_id: selectedInstitute.id,
         custom_data: customData,
       });
@@ -119,6 +121,15 @@ export default function StudentRegister() {
                 InputProps={{ ...params.InputProps, disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
               />
             )}
+          />
+
+          <TextField 
+            label="Full Name" 
+            variant="filled" 
+            fullWidth 
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            InputProps={{ disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
           />
 
           <TextField 

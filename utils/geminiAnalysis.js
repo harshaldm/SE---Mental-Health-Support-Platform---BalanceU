@@ -32,16 +32,40 @@ Analyze these ${textResponses.length} responses for:
 Student responses:
 ${formattedResponses}
 
-Provide a 3-sentence summary for a counselor. Be professional, empathetic, and concise.`;
+Provide a 3-sentence summary for a counselor. Be professional, empathetic, and concise.
+Also, assign a calculated risk level. The string riskLevel must be exactly one of: "No Risk", "Low", "Medium", or "High Risk".
+
+Respond strictly in pure JSON without markdown backticks, using the following structure:
+{
+  "summary": "...",
+  "riskLevel": "..."
+}`;
+
+    console.log('─── 📤 Sending Prompt to Gemini ───');
+    console.log(prompt);
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     const result = await model.generateContent(prompt);
-    const response = result.response;
+    
+    // Parse the JSON string
+    const responseText = result.response.text();
+    console.log('─── 📥 Raw Response from Gemini ───');
+    console.log(responseText);
 
-    return response.text();
+    const rawText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(rawText);
+
+    console.log('─── ⚙️ Parsed AI JSON ───');
+    console.log(JSON.stringify(parsed, null, 2));
+
+    return parsed;
   } catch (error) {
     console.error('❌ Gemini analysis failed:', error.message);
-    return null; // Non-blocking — return null if AI fails
+    // Throw error if it's a parsing issue or serious API failure to let controller handle it
+    if (error instanceof SyntaxError) {
+        console.error('JSON Parsing Error in AI Response');
+    }
+    return null; // Non-blocking fallback
   }
 };
 

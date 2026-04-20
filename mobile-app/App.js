@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native';
 import { useState } from 'react';
 import Login from './src/screens/Login';
-import MedTracker from './src/screens/MedTracker';
+import StudentDashboard from './src/screens/StudentDashboard';
 import Register from './src/screens/Register';
 import { globalStyles } from './src/globalStyles';
 
@@ -14,7 +14,7 @@ export default function App() {
   return (
     <SafeAreaView style={globalStyles.safeArea}>
       {isLoggedIn ? (
-        <MedTracker token="dummy_token_123" />
+        <StudentDashboard setLoggedIn={setLoggedIn} />
       ) : showRegister ? (
         <Register setLoggedIn={setLoggedIn} />
       ) : (

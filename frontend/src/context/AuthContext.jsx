@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     
     // Role-based redirect
     if (userData.role === 'Student') {
-        navigate('/app');
+        navigate('/student/dashboard');
     } else if (userData.role === 'Counselor') {
         navigate('/counselor/dashboard');
     } else if (userData.role === 'Admin') {
