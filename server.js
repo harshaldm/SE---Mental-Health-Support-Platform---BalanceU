@@ -38,7 +38,11 @@ const io = new Server(server, {
 const path = require('path');
 
 // ─── Middleware ───
-app.use(cors());
+app.use(cors({ 
+  origin: '*', 
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'], 
+  allowedHeaders: ['Content-Type', 'Authorization'] 
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -81,8 +85,8 @@ const startServer = async () => {
     // ─── Initialize Background Jobs ───
     initCronJobs(app);
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log("Server listening on all network interfaces...");
       console.log(`🔌 Socket.io ready for connections`);
     });
   } catch (error) {

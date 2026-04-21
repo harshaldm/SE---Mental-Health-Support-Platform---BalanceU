@@ -12,7 +12,9 @@ const authMiddleware = (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'balanceu_secure_key_2026';
+
+    const decoded = jwt.verify(token, secret);
 
     // Attach user payload to the request object
     req.user = decoded;

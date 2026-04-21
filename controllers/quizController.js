@@ -34,23 +34,31 @@ const submitQuiz = async (req, res) => {
   try {
     const userId = req.user.id;
     const { quiz_type, question_responses } = req.body;
-    console.log('─── 📝 Incoming Quiz Submission ───');
-    console.log('Student ID:', userId);
-    console.log('Quiz Type:', quiz_type);
-    console.log('Body Snapshot:', JSON.stringify(req.body, null, 2));
-
+    
     // Validate inputs
     const allowedTypes = ['PHQ-9', 'GAD-7'];
     if (!quiz_type || !allowedTypes.includes(quiz_type)) {
-      return res.status(400).json({ error: `quiz_type must be one of: ${allowedTypes.join(', ')}` });
+      return res.status(400).json({ 
+        error: "Bad Request", 
+        details: `quiz_type must be one of: ${allowedTypes.join(', ')}` 
+      });
     }
 
     if (!question_responses || !Array.isArray(question_responses) || question_responses.length === 0) {
-      return res.status(400).json({ error: 'question_responses must be a non-empty array' });
+      return res.status(400).json({ 
+        error: "Bad Request", 
+        details: "question_responses must be a non-empty array" 
+      });
     }
 
+    // ─── Sanitize Responses ───
+    const sanitizedResponses = question_responses.map(r => ({
+      ...r,
+      text: (r.text || '').trim().substring(0, 250) // Trim and cap at 250
+    }));
+
     // 1. Calculate total score
-    const totalScore = question_responses.reduce((sum, r) => sum + (r.score || 0), 0);
+    const totalScore = sanitizedResponses.reduce((sum, r) => sum + (r.score || 0), 0);
 
     // 2. Determine risk level
     const riskLevel = getRiskLevel(quiz_type, totalScore);
@@ -65,33 +73,34 @@ const submitQuiz = async (req, res) => {
     });
 
     // 4. Run Gemini AI sentiment analysis on text responses
-    const aiData = await analyzeResponses(question_responses);
     let finalSummary = null;
     let finalRiskLevel = riskLevel;
 
-    if (aiData) {
-      console.log('─── 🤖 Gemini Analysis Received ───');
-      console.log('AI Summary:', aiData.summary);
-      console.log('AI Risk Level:', aiData.riskLevel);
-      finalSummary = aiData.summary || null;
-      if (aiData.riskLevel) {
-      finalSummary = aiData.summary || null;
-      if (aiData.riskLevel) {
-        finalRiskLevel = aiData.riskLevel;
-        // Update PostgreSQL with the new AI-assessed risk level
-        quizResult.risk_level = finalRiskLevel;
-        await quizResult.save();
+    try {
+      const aiData = await analyzeResponses(sanitizedResponses);
+      if (aiData) {
+        finalSummary = aiData.summary || null;
+        if (aiData.riskLevel) {
+          finalRiskLevel = aiData.riskLevel;
+          // Update PostgreSQL with the new AI-assessed risk level
+          quizResult.risk_level = finalRiskLevel;
+          await quizResult.save();
+        }
       }
+    } catch (aiError) {
+      console.error("Gemini AI Analysis unavailable:", aiError.message);
+      // Construct fallback summary for production resiliency
+      finalSummary = `Based on your numerical score of ${totalScore}, your ${quiz_type} level is currently assessed as ${riskLevel}. We recommend discussing these results with a professional counselor to understand the nuances of your feedback and explore personalized support strategies.`;
     }
 
     // 5. Save detailed responses & AI analysis to MongoDB
     const assessmentDetails = await AssessmentDetails.create({
       quiz_result_id: quizResult.id,
-      question_responses,
+      question_responses: sanitizedResponses,
       ai_sentiment_analysis: finalSummary,
     });
 
-    const responseBody = {
+    res.status(201).json({
       message: 'Assessment submitted successfully',
       result: {
         id: quizResult.id,
@@ -102,19 +111,12 @@ const submitQuiz = async (req, res) => {
       },
       ai_sentiment_analysis: finalSummary,
       details_id: assessmentDetails._id,
-    };
-
-    console.log('─── ✅ Final Response Packaged ───');
-    console.log('Risk Level:', responseBody.result.risk_level);
-    console.log('AI Summary Present:', !!responseBody.ai_sentiment_analysis);
-
-    res.status(201).json(responseBody);
+    });
   } catch (error) {
-    console.error('❌ Error submitting quiz:', error.message);
+    console.error('Error submitting quiz:', error.message);
     res.status(500).json({ error: 'Failed to submit assessment' });
   }
 };
-
 // ─── Share with Counselor ───
 // PATCH /api/quiz/:id/share
 const shareWithCounselor = async (req, res) => {

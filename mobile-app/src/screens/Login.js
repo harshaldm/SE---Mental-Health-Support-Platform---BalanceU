@@ -1,15 +1,43 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { designTokens, globalStyles } from '../globalStyles';
+import { API_URL } from '../config';
 
-export default function Login({ setLoggedIn, setShowRegister }) {
+export default function Login({ onLoginSuccess, setShowRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // In actual implementation, make POST to API_URL/api/auth/login
-    // Here we simulate successful login
-    setLoggedIn(true);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      alert('Please enter both email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
+        email: email.trim(),
+        password
+      });
+
+      const { token, user } = res.data;
+      
+      // PERSISTENT STORAGE: Save raw token (no stringify)
+      await AsyncStorage.setItem('userToken', token);
+      
+      onLoginSuccess(token, user);
+    } catch (error) {
+      const serverMsg = error.response?.data?.error || error.response?.data?.message;
+      
+      // Production-friendly messaging
+      const msg = serverMsg || "We're having trouble connecting to the server. Please check your internet and try again.";
+      alert(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,6 +51,8 @@ export default function Login({ setLoggedIn, setShowRegister }) {
             style={styles.input}
             placeholder="Email Address"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
+            keyboardType="email-address"
+            autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
           />
@@ -34,8 +64,12 @@ export default function Login({ setLoggedIn, setShowRegister }) {
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity style={globalStyles.buttonPrimary} onPress={handleLogin}>
-            <Text style={globalStyles.buttonText}>Sign In</Text>
+          <TouchableOpacity 
+            style={[globalStyles.buttonPrimary, loading && { opacity: 0.7 }]} 
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={globalStyles.buttonText}>{loading ? 'Signing In...' : 'Sign In'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowRegister && setShowRegister(true)} style={{ alignItems: 'center' }}>
             <Text style={{ color: designTokens.colors.primary, fontWeight: 'bold' }}>Create an Account</Text>

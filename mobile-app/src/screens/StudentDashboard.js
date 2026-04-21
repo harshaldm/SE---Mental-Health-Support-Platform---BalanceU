@@ -6,6 +6,7 @@ import {
 import { designTokens, globalStyles } from '../globalStyles';
 import QuizOnboarding from './QuizOnboarding';
 import QuizActive from './QuizActive';
+import MedTracker from './MedTracker';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
@@ -14,6 +15,9 @@ export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' })
   const [activeTab, setActiveTab] = useState('Quizzes');
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [sharedData, setSharedData] = useState(null);
+
+  // ANIMATION: Initialize drawer position (off-screen by default)
   const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
   const toggleDrawer = () => {
@@ -29,6 +33,7 @@ export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' })
   const handleTabPress = (tab) => {
     setActiveTab(tab);
     setCurrentQuiz(null); // Reset quiz state when switching tabs
+    setSharedData(null); // Clear context when manually switching
     toggleDrawer();
   };
 
@@ -40,8 +45,9 @@ export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' })
             quizType={currentQuiz} 
             token={token}
             onCancel={() => setCurrentQuiz(null)}
-            onComplete={(nextTab) => {
+            onComplete={(nextTab, data) => {
               setCurrentQuiz(null);
+              if (data) setSharedData(data);
               if (nextTab) setActiveTab(nextTab);
             }}
           />
@@ -57,7 +63,18 @@ export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' })
         return (
           <View style={styles.placeholderContainer}>
             <Text style={styles.tabTitle}>Counselor Support</Text>
-            <Text style={globalStyles.textBody}>Connect with your institutional counselor here.</Text>
+            {sharedData?.riskLevel && (
+               <View style={[styles.alertBox, { backgroundColor: designTokens.colors.errorContainer }]}>
+                 <Text style={{ color: designTokens.colors.error, fontWeight: 'bold' }}>
+                   Priority Connection: {sharedData.riskLevel} Risk Detected
+                 </Text>
+               </View>
+            )}
+            <Text style={globalStyles.textBody}>
+              {sharedData?.riskLevel 
+                ? "Your assessment has been flagged for immediate counselor review. A professional will reach out shortly."
+                : "Connect with your institutional counselor here."}
+            </Text>
           </View>
         );
       default:

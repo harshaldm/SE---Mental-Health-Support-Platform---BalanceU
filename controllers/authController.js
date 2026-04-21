@@ -125,12 +125,14 @@ const login = async (req, res) => {
 
     // Find user by email
     const user = await User.findOne({ where: { email } });
+    
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     // Compare password with stored hash
     const isMatch = await bcrypt.compare(password, user.password_hash);
+    
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -142,7 +144,8 @@ const login = async (req, res) => {
       institute_id: user.institute_id,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const secret = process.env.JWT_SECRET || 'balanceu_secure_key_2026';
+    const token = jwt.sign(payload, secret, { expiresIn: '7d' });
 
     res.status(200).json({
       message: 'Login successful',
@@ -150,7 +153,7 @@ const login = async (req, res) => {
       user: { id: user.id, email: user.email, role: user.role, institute_id: user.institute_id },
     });
   } catch (error) {
-    console.error('❌ Error during login:', error.message);
+    console.error("Login Error:", error.message);
     res.status(500).json({ error: 'Login failed' });
   }
 };

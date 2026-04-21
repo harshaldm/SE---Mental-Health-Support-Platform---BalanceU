@@ -7,18 +7,33 @@ import Register from './src/screens/Register';
 import { globalStyles } from './src/globalStyles';
 
 export default function App() {
-  // Simple state-based navigation for scaffolding purposes
+  // Production-ready state management
   const [isLoggedIn, setLoggedIn] = useState(false);
+  const [userToken, setUserToken] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
+
+  const handleLoginSuccess = (token, user) => {
+    setUserToken(token);
+    setUserData(user);
+    setLoggedIn(true);
+  };
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
       {isLoggedIn ? (
-        <StudentDashboard setLoggedIn={setLoggedIn} />
+        <StudentDashboard 
+          setLoggedIn={setLoggedIn} 
+          token={userToken} 
+          user={userData} 
+        />
       ) : showRegister ? (
         <Register setLoggedIn={setLoggedIn} />
       ) : (
-        <Login setLoggedIn={setLoggedIn} setShowRegister={setShowRegister} />
+        <Login 
+          onLoginSuccess={handleLoginSuccess}
+          setShowRegister={setShowRegister} 
+        />
       )}
       <StatusBar style="auto" />
     </SafeAreaView>

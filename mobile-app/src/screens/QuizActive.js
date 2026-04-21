@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, 
   ScrollView, ActivityIndicator, Alert 
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { designTokens, globalStyles } from '../globalStyles';
 import { API_URL } from '../config';
@@ -37,7 +38,7 @@ const OPTIONS = [
   { value: 3, label: 'Nearly every day' }
 ];
 
-export default function QuizActive({ quizType, onComplete, onCancel, token }) {
+export default function QuizActive({ quizType, onComplete, onCancel, token: propToken }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [reflections, setReflections] = useState([]);
@@ -61,6 +62,16 @@ export default function QuizActive({ quizType, onComplete, onCancel, token }) {
   const submitQuiz = async () => {
     setIsSubmitting(true);
     try {
+      // PERSISTENT RETRIEVAL: Pull from AsyncStorage as source of truth
+      const storedToken = await AsyncStorage.getItem('userToken');
+      const token = (storedToken || propToken);
+
+      if (!token || token === 'undefined') {
+         alert("Session Error: Please logout and login again to continue.");
+         setIsSubmitting(false);
+         return;
+      }
+
       const payload = {
         quiz_type: quizType,
         question_responses: questions.map((q, i) => ({
@@ -70,14 +81,18 @@ export default function QuizActive({ quizType, onComplete, onCancel, token }) {
         }))
       };
 
-      const res = await axios.post(`${API_URL}/api/quiz/submit`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000 // 10 seconds per requirements
+      const fullUrl = `${API_URL}/api/quiz/submit`;
+
+      const res = await axios.post(fullUrl, payload, {
+        headers: { Authorization: `Bearer ${token.trim()}` },
+        timeout: 15000 
       });
 
       setResultData(res.data);
-    } catch (err) {
-      Alert.alert('Submission Error', err.message);
+    } catch (error) {
+      const errorMsg = error.response?.data?.details || error.response?.data?.error;
+      const friendlyMsg = errorMsg || "We couldn't submit your assessment right now. Please check your connection and try again.";
+      alert(friendlyMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -104,13 +119,15 @@ export default function QuizActive({ quizType, onComplete, onCancel, token }) {
                  </Text>
                </View>
             </View>
-            <Text style={styles.aiSummary}>{ai_sentiment_analysis || 'AI is currently analyzing the nuances of your responses...'}</Text>
+            <Text style={styles.aiSummary}>
+              {ai_sentiment_analysis || 'Your assessment has been successfully analyzed. Please review the clinical risk level above and consult your counselor for a detailed review of your reflections.'}
+            </Text>
           </View>
 
           {isElevatedRisk && (
             <TouchableOpacity 
                 style={[globalStyles.buttonPrimary, { backgroundColor: designTokens.colors.error }]}
-                onPress={() => onComplete('Counselor')}
+                onPress={() => onComplete('Counselor', { riskLevel: result.risk_level })}
             >
               <Text style={globalStyles.buttonText}>Connect with Support</Text>
             </TouchableOpacity>

@@ -16,7 +16,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 const triageMessage = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(
       `Analyze this student message: '${text}'. If it indicates self-harm or immediate crisis, return ONLY 'CRISIS'. If it shows high stress, return 'MODERATE'. Otherwise, return 'LOW'.`
     );

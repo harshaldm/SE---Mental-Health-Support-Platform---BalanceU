@@ -44,9 +44,9 @@ Respond strictly in pure JSON without markdown backticks, using the following st
     console.log('─── 📤 Sending Prompt to Gemini ───');
     console.log(prompt);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const result = await model.generateContent(prompt);
-    
+
     // Parse the JSON string
     const responseText = result.response.text();
     console.log('─── 📥 Raw Response from Gemini ───');
@@ -63,7 +63,7 @@ Respond strictly in pure JSON without markdown backticks, using the following st
     console.error('❌ Gemini analysis failed:', error.message);
     // Throw error if it's a parsing issue or serious API failure to let controller handle it
     if (error instanceof SyntaxError) {
-        console.error('JSON Parsing Error in AI Response');
+      console.error('JSON Parsing Error in AI Response');
     }
     return null; // Non-blocking fallback
   }
