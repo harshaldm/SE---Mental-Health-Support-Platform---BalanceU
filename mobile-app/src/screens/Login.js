@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { designTokens, globalStyles } from '../globalStyles';
-import { API_URL } from '../config';
+import { BASE_URL as API_URL } from '../config/apiConfig';
 
 export default function Login({ onLoginSuccess, setShowRegister }) {
   const [email, setEmail] = useState('');

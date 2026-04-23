@@ -40,8 +40,8 @@ const path = require('path');
 // ─── Middleware ───
 app.use(cors({ 
   origin: '*', 
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'], 
-  allowedHeaders: ['Content-Type', 'Authorization'] 
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'], 
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Active-Institute'] 
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

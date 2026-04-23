@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AssessmentResults from './AssessmentResults';
 import { 
   View, Text, StyleSheet, TouchableOpacity, TextInput, 
   ScrollView, ActivityIndicator, Alert 
@@ -6,7 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { designTokens, globalStyles } from '../globalStyles';
-import { API_URL } from '../config';
+import { BASE_URL as API_URL } from '../config/apiConfig';
 
 const QUIZ_DATA = {
   'PHQ-9': [
@@ -101,48 +102,15 @@ export default function QuizActive({ quizType, onComplete, onCancel, token: prop
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   if (resultData) {
-    const { result, ai_sentiment_analysis } = resultData;
-    const isElevatedRisk = result.risk_level !== 'No Risk' && result.risk_level !== 'Minimal' && result.risk_level !== 'Low';
-
     return (
-      <ScrollView contentContainerStyle={styles.resultContainer}>
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>Assessment Complete</Text>
-          <Text style={styles.resultSubtitle}>Your reflections have been processed.</Text>
-
-          <View style={styles.analysisBox}>
-            <View style={styles.riskHeader}>
-               <Text style={styles.analysisBoxTitle}>Clinical Insight</Text>
-               <View style={[styles.riskBadge, { backgroundColor: isElevatedRisk ? designTokens.colors.errorContainer : designTokens.colors.primaryContainer }]}>
-                 <Text style={[styles.riskText, { color: isElevatedRisk ? designTokens.colors.error : designTokens.colors.primary }]}>
-                   {result.risk_level}
-                 </Text>
-               </View>
-            </View>
-            <Text style={styles.aiSummary}>
-              {ai_sentiment_analysis || 'Your assessment has been successfully analyzed. Please review the clinical risk level above and consult your counselor for a detailed review of your reflections.'}
-            </Text>
-          </View>
-
-          {isElevatedRisk && (
-            <TouchableOpacity 
-                style={[globalStyles.buttonPrimary, { backgroundColor: designTokens.colors.error }]}
-                onPress={() => onComplete('Counselor', { riskLevel: result.risk_level })}
-            >
-              <Text style={globalStyles.buttonText}>Connect with Support</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity 
-            style={[globalStyles.buttonPrimary, isElevatedRisk && { backgroundColor: designTokens.colors.surfaceContainer, borderWidth: 1, borderColor: '#eee' }]}
-            onPress={() => onComplete('Quizzes')}
-          >
-            <Text style={[globalStyles.buttonText, isElevatedRisk && { color: designTokens.colors.onSurface }]}>Return to Dashboard</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <AssessmentResults 
+        quizType={quizType}
+        aiInsights={resultData.aiInsights}
+        onReturn={() => onComplete('Quizzes')}
+      />
     );
   }
+
 
   const isNextDisabled = currentAnswer === undefined || currentReflection.trim().length === 0;
 
@@ -322,68 +290,5 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     backgroundColor: '#cbd5d0',
-  },
-  // Result Styles
-  resultContainer: {
-    padding: 24,
-    paddingTop: 48,
-    flexGrow: 1,
-  },
-  resultCard: {
-    backgroundColor: designTokens.colors.surfaceContainerLow,
-    padding: 32,
-    borderRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  resultTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: designTokens.colors.onSurface,
-    marginBottom: 8,
-  },
-  resultSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: designTokens.colors.onSurfaceVariant,
-    marginBottom: 32,
-  },
-  analysisBox: {
-    backgroundColor: designTokens.colors.surface,
-    padding: 24,
-    borderRadius: 24,
-    marginBottom: 32,
-    borderWidth: 1,
-    borderColor: '#f0f0ea',
-  },
-  riskHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  analysisBoxTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: designTokens.colors.onSurface,
-  },
-  riskBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 50,
-  },
-  riskText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  aiSummary: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: designTokens.colors.onSurface,
-    fontStyle: 'italic',
   }
 });

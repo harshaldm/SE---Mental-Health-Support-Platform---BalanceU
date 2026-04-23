@@ -5,6 +5,7 @@ import Login from './src/screens/Login';
 import StudentDashboard from './src/screens/StudentDashboard';
 import Register from './src/screens/Register';
 import { globalStyles } from './src/globalStyles';
+import { BASE_URL } from './src/config/apiConfig';
 
 export default function App() {
   // Production-ready state management

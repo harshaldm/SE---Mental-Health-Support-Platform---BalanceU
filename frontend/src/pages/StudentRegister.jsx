@@ -1,238 +1,163 @@
-import { useState, useEffect } from 'react';
-import { 
-  Box, Typography, Button, TextField, Select, MenuItem, 
-  FormControl, InputLabel, Paper, Autocomplete
-} from '@mui/material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-export default function StudentRegister() {
-  const [institutes, setInstitutes] = useState([]);
-  const [selectedInstitute, setSelectedInstitute] = useState(null);
-  const [schema, setSchema] = useState([]);
-  
-  // Basic Auth
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  
-  // Dynamic JSON Form Data
-  const [customData, setCustomData] = useState({});
+const SAGE    = '#556B5F';
+const CREAM   = '#FDFBF7';
+const CARD    = '#F5F0E8';
+const CHARCOAL = '#2C2C2C';
+const MUTED   = '#7A7A6E';
+const BORDER  = '#E0D9CE';
 
+export default function StudentRegister() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Fetch institute list on load
-    const fetchInstitutes = async () => {
-      try {
-        const res = await axios.get('http://localhost:5000/api/institutes/list');
-        setInstitutes(res.data.institutes);
-      } catch (err) {
-        console.error('Failed to load institutes', err);
-      }
-    };
-    fetchInstitutes();
-  }, []);
-
-  const handleInstituteChange = async (event, newValue) => {
-    setSelectedInstitute(newValue);
-    setSchema([]); // Reset schema initially
-    setCustomData({}); // Reset answers
-    if (newValue) {
-      try {
-        const res = await axios.get(`http://localhost:5000/api/institutes/${newValue.id}/form-schema`);
-        setSchema(res.data.schema || []);
-      } catch (err) {
-        console.error('Failed to load schema', err);
-      }
-    }
-  };
-
-  const handleCustomDataChange = (label, value) => {
-    setCustomData(prev => ({ ...prev, [label]: value }));
-  };
-
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const isPasswordMatch = password && password === confirmPassword;
-  
-  // Basic validation that all hardcoded generic fields are valid
-  const isValid = selectedInstitute && isEmailValid && isPasswordMatch && email.length > 0 && fullName.trim().length > 0;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!isValid) return;
-
-    try {
-      await axios.post('http://localhost:5000/api/auth/register-student', {
-        email,
-        password,
-        full_name: fullName,
-        institute_id: selectedInstitute.id,
-        custom_data: customData,
-      });
-      alert('Registration Successful!');
-      navigate('/');
-    } catch (error) {
-      alert('Registration failed: ' + (error.response?.data?.error || error.message));
-    }
-  };
-
   return (
-    <Box 
-      sx={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        bgcolor: 'background.default',
-        p: 3 
-      }}
-    >
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 6, 
-          width: '100%', 
-          maxWidth: 600, 
-          borderRadius: '3rem',
-          bgcolor: 'background.paper',
-          boxShadow: '0 20px 40px rgba(57, 56, 42, 0.06)' 
-        }}
-      >
-        <Typography variant="h3" component="h1" gutterBottom fontWeight="bold" color="text.primary" sx={{ fontFamily: 'var(--font-display)' }}>
-          Join BalanceU
-        </Typography>
-        <Typography variant="body1" color="text.secondary" mb={4}>
-          Create your verified student profile.
-        </Typography>
+    <div style={{
+      minHeight: '100vh',
+      background: CREAM,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px',
+      fontFamily: '"Manrope", "Inter", sans-serif',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '480px',
+        background: '#fff',
+        borderRadius: '32px',
+        boxShadow: '0 4px 40px rgba(44, 44, 44, 0.08)',
+        padding: '48px 44px 40px',
+        textAlign: 'center',
+      }}>
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          
-          <Autocomplete
-            options={institutes}
-            getOptionLabel={(option) => `${option.name} (${option.type})`}
-            onChange={handleInstituteChange}
-            renderInput={(params) => (
-              <TextField 
-                {...params} 
-                label="Select Your Institute" 
-                variant="filled" 
-                InputProps={{ ...params.InputProps, disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
-              />
-            )}
-          />
+        {/* ─── Brand pill ─── */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: CARD,
+          borderRadius: '50px',
+          padding: '8px 20px',
+          marginBottom: '28px',
+        }}>
+          <span style={{ fontSize: '18px' }}>🌿</span>
+          <span style={{ fontWeight: '800', fontSize: '16px', color: SAGE }}>BalanceU</span>
+        </div>
 
-          <TextField 
-            label="Full Name" 
-            variant="filled" 
-            fullWidth 
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            InputProps={{ disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
-          />
+        {/* ─── Icon ─── */}
+        <div style={{
+          width: '88px',
+          height: '88px',
+          background: CARD,
+          borderRadius: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: '40px',
+        }}>
+          📱
+        </div>
 
-          <TextField 
-            label="College/University Email" 
-            variant="filled" 
-            fullWidth 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={email.length > 0 && !isEmailValid}
-            helperText={email.length > 0 && !isEmailValid ? "Enter a valid email" : ""}
-            InputProps={{ disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
-          />
+        <h1 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: '800', color: CHARCOAL, letterSpacing: '-0.5px' }}>
+          Students use the mobile app
+        </h1>
+        <p style={{ margin: '0 0 32px', fontSize: '15px', color: MUTED, lineHeight: '1.7' }}>
+          Your personalised wellness journey, assessments, and sessions with counselors live inside the BalanceU mobile app. Download it to get started.
+        </p>
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField 
-              label="Password" 
-              type="password"
-              variant="filled" 
-              fullWidth 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              InputProps={{ disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
-            />
-            <TextField 
-              label="Confirm Password" 
-              type="password"
-              variant="filled" 
-              fullWidth 
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              error={confirmPassword.length > 0 && !isPasswordMatch}
-              InputProps={{ disableUnderline: true, sx: { borderRadius: '1.5rem', bgcolor: '#f8f4e5' } }}
-            />
-          </Box>
+        {/* ─── Download QR placeholder ─── */}
+        <div style={{
+          background: CARD,
+          border: `1.5px dashed ${BORDER}`,
+          borderRadius: '20px',
+          padding: '28px',
+          marginBottom: '28px',
+        }}>
+          <div style={{
+            width: '120px',
+            height: '120px',
+            background: '#E0D9CE',
+            borderRadius: '16px',
+            margin: '0 auto 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '13px',
+            color: MUTED,
+            fontWeight: '600',
+          }}>
+            QR Code
+          </div>
+          <p style={{ margin: 0, fontSize: '13px', color: MUTED, fontWeight: '600' }}>
+            Scan to download on iOS or Android
+          </p>
+        </div>
 
-          {/* Conditional Rendering of Institute Schema */}
-          {schema.length > 0 && (
-            <Box sx={{ mt: 2, p: 3, borderRadius: '1.5rem', bgcolor: '#fff', border: '1px solid #e0dfd6' }}>
-              <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 3 }}>
-                Required Details for {selectedInstitute?.name}
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {schema.map((f, i) => (
-                  <Box key={i}>
-                    {f.type === 'Dropdown' ? (
-                      <FormControl variant="filled" fullWidth>
-                        <InputLabel>{f.label} *</InputLabel>
-                        <Select 
-                          disableUnderline 
-                          sx={{ borderRadius: '1rem', bgcolor: '#f8f4e5' }}
-                          value={customData[f.label] || ''}
-                          onChange={(e) => handleCustomDataChange(f.label, e.target.value)}
-                        >
-                          {f.options.map((opt, oIdx) => <MenuItem key={oIdx} value={opt}>{opt}</MenuItem>)}
-                        </Select>
-                      </FormControl>
-                    ) : f.type === 'Date/Calendar' ? (
-                      <TextField 
-                        label={`${f.label} *`} 
-                        type="date" 
-                        variant="filled" 
-                        fullWidth 
-                        InputLabelProps={{ shrink: true }}
-                        InputProps={{ disableUnderline: true, sx: { borderRadius: '1rem', bgcolor: '#f8f4e5' } }}
-                        value={customData[f.label] || ''}
-                        onChange={(e) => handleCustomDataChange(f.label, e.target.value)}
-                      />
-                    ) : (
-                      <TextField 
-                        label={`${f.label} *`} 
-                        variant="filled" 
-                        fullWidth 
-                        type={f.type === 'Number' ? 'number' : f.type === 'Phone' ? 'tel' : 'text'}
-                        InputProps={{ disableUnderline: true, sx: { borderRadius: '1rem', bgcolor: '#f8f4e5' } }}
-                        value={customData[f.label] || ''}
-                        onChange={(e) => handleCustomDataChange(f.label, e.target.value)}
-                      />
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            </Box>
-          )}
+        {/* ─── App Store buttons ─── */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '28px' }}>
+          {['App Store', 'Google Play'].map(store => (
+            <div
+              key={store}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: '14px',
+                background: CHARCOAL,
+                color: '#fff',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>{store === 'App Store' ? '🍎' : '▶'}</span> {store}
+            </div>
+          ))}
+        </div>
 
-          <Button 
-            type="submit" 
-            variant="contained" 
-            color="primary" 
-            size="large"
-            disabled={!isValid || (schema.length > 0 && Object.keys(customData).length < schema.length)}
-            sx={{ 
-                mt: 2, 
-                py: 2, 
-                borderRadius: '50px', 
-                fontWeight: 'bold', 
-                textTransform: 'none',
-                fontSize: '1.1rem'
-            }}
-          >
-            Create Verified Profile
-          </Button>
-        </Box>
-      </Paper>
-    </Box>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: SAGE,
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            padding: '8px',
+          }}
+        >
+          ← Back to Sign In
+        </button>
+
+        {/* ─── Trust badges ─── */}
+        <div style={{
+          marginTop: '24px',
+          paddingTop: '20px',
+          borderTop: `1px solid ${BORDER}`,
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '20px',
+          flexWrap: 'wrap',
+        }}>
+          {[
+            { icon: '🛡️', label: 'HIPAA Compliant' },
+            { icon: '🔒', label: 'Encrypted Data' },
+            { icon: '🌿', label: 'Wellness First' },
+          ].map(badge => (
+            <div key={badge.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: MUTED, fontWeight: '600' }}>
+              <span>{badge.icon}</span>
+              <span>{badge.label}</span>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
   );
 }

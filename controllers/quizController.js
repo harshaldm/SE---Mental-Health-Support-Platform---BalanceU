@@ -73,44 +73,69 @@ const submitQuiz = async (req, res) => {
     });
 
     // 4. Run Gemini AI sentiment analysis on text responses
-    let finalSummary = null;
-    let finalRiskLevel = riskLevel;
+    let aiInsights = null;
 
     try {
       const aiData = await analyzeResponses(sanitizedResponses);
       if (aiData) {
-        finalSummary = aiData.summary || null;
-        if (aiData.riskLevel) {
-          finalRiskLevel = aiData.riskLevel;
-          // Update PostgreSQL with the new AI-assessed risk level
-          quizResult.risk_level = finalRiskLevel;
+        aiInsights = {
+          summary: aiData.summary,
+          riskLevel: aiData.riskLevel,
+          potentialPattern: aiData.potentialPattern,
+          score: totalScore,
+          disclaimer: aiData.disclaimer || "This is an AI-generated observation, not a medical diagnosis."
+        };
+        
+        // Update PostgreSQL if risk level changed by AI
+        if (aiData.riskLevel && aiData.riskLevel !== riskLevel) {
+          quizResult.risk_level = aiData.riskLevel;
           await quizResult.save();
         }
       }
     } catch (aiError) {
       console.error("Gemini AI Analysis unavailable:", aiError.message);
-      // Construct fallback summary for production resiliency
-      finalSummary = `Based on your numerical score of ${totalScore}, your ${quiz_type} level is currently assessed as ${riskLevel}. We recommend discussing these results with a professional counselor to understand the nuances of your feedback and explore personalized support strategies.`;
+      
+      // EMERGENCY FALLBACK: Simulated Analysis based on Numerical Score
+      let simulatedSummary = "";
+      let simulatedPattern = "General Pattern";
+      
+      if (totalScore >= 15) {
+        simulatedSummary = `Your responses indicate a high level of distress. This score suggests significant symptoms that may interfere with daily activities. We strongly recommend reaching out to our counseling team for immediate support and a detailed professional evaluation.`;
+        simulatedPattern = quiz_type === 'PHQ-9' ? "Significant Depressive Symptoms" : "Severe Anxiety Patterns";
+      } else if (totalScore >= 10) {
+        simulatedSummary = `Your responses indicate a moderate level of distress. You may be experiencing persistent challenges that affect your wellbeing. Professional guidance can help you develop effective coping strategies to manage these symptoms early.`;
+        simulatedPattern = "Moderate Clinical Indicators";
+      } else {
+        simulatedSummary = `Your responses indicate a low or minimal level of distress at this time. This suggests you are currently maintaining a stable baseline. We encourage you to continue practicing self-care and monitoring your mood regularly.`;
+        simulatedPattern = "Stable Management";
+      }
+
+      aiInsights = {
+        summary: simulatedSummary,
+        riskLevel: riskLevel, // Uses the numerical risk level calculated at step 2
+        potentialPattern: simulatedPattern,
+        score: totalScore,
+        disclaimer: "AI Analysis is currently offline. This is a simulated observation based on your numerical score."
+      };
     }
 
+
     // 5. Save detailed responses & AI analysis to MongoDB
-    const assessmentDetails = await AssessmentDetails.create({
+    await AssessmentDetails.create({
       quiz_result_id: quizResult.id,
       question_responses: sanitizedResponses,
-      ai_sentiment_analysis: finalSummary,
+      ai_sentiment_analysis: aiInsights.summary,
     });
 
     res.status(201).json({
       message: 'Assessment submitted successfully',
       result: {
         id: quizResult.id,
-        quiz_type: quizResult.quiz_type,
-        total_score: quizResult.total_score,
-        risk_level: quizResult.risk_level,
-        shared_with_counselor: quizResult.shared_with_counselor,
+        quiz_type: quiz_type,
+        total_score: totalScore,
+        risk_level: aiInsights.riskLevel,
       },
-      ai_sentiment_analysis: finalSummary,
-      details_id: assessmentDetails._id,
+      aiInsights: aiInsights
     });
   } catch (error) {
     console.error('Error submitting quiz:', error.message);

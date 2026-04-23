@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { BASE_URL } from '../config/apiConfig';
 
 export default function AdminDashboard() {
   const { user, token } = useAuth();
@@ -12,12 +13,12 @@ export default function AdminDashboard() {
   const [label, setLabel] = useState('');
   const [type, setType] = useState('Text');
   const [options, setOptions] = useState('');
-  const [pendingCounselors, setPendingCounselors] = useState([]);
+  const [pendingApplications, setPendingApplications] = useState([]);
 
   useEffect(() => {
     const fetchSchema = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/institutes/${user.institute_id}/form-schema`, {
+        const res = await axios.get(`${BASE_URL}/api/institutes/${user.institute_id}/form-schema`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data.schema) {
@@ -28,33 +29,33 @@ export default function AdminDashboard() {
       }
     };
 
-    const fetchPendingCounselors = async () => {
+    const fetchPendingApplications = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/admin/pending-counselors`, {
+        const res = await axios.get(`${BASE_URL}/api/admin/pending-applications`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const filteredCounselors = res.data.counselors.filter(c => String(c.institute_id) === String(user.institute_id));
-        setPendingCounselors(filteredCounselors);
+        setPendingApplications(res.data.applications || []);
       } catch (error) {
-        console.error('Failed to fetch pending counselors', error);
+        console.error('Failed to fetch pending applications', error);
       }
     };
 
     if (user?.institute_id) {
       fetchSchema();
-      fetchPendingCounselors();
+      fetchPendingApplications();
     }
   }, [user, token]);
 
-  const handleHire = async (counselorId) => {
+  const handleApplicationAction = async (applicationId, action) => {
     try {
-      await axios.patch(`http://localhost:5000/api/admin/hire-counselor/${counselorId}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPendingCounselors(pendingCounselors.filter(c => c.id !== counselorId));
-      alert('Counselor hired successfully!');
+      await axios.put(`${BASE_URL}/api/admin/approve-counselor`,
+        { application_id: applicationId, action },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setPendingApplications(pendingApplications.filter(a => a.application_id !== applicationId));
+      alert(`Application ${action === 'active' ? 'approved' : 'rejected'} successfully!`);
     } catch (error) {
-      alert('Failed to hire counselor: ' + error.message);
+      alert('Action failed: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -79,7 +80,7 @@ export default function AdminDashboard() {
 
   const saveSchema = async () => {
     try {
-      await axios.patch('http://localhost:5000/api/institutes/schema', {
+      await axios.patch(`${BASE_URL}/api/institutes/schema`, {
         institute_id: user.institute_id,
         schema: fields
       }, {
@@ -218,58 +219,52 @@ export default function AdminDashboard() {
         </Grid>
       </Grid>
 
-      {/* Counselor Pending Verifications */}
+      {/* ─── Counselor Applications (single source of truth) ─── */}
       <Box sx={{ mt: 6 }}>
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>Pending Counselor Approvals</Typography>
-        {pendingCounselors.length === 0 ? (
+        <Typography variant="h4" sx={{ mb: 1, fontWeight: 'bold' }}>Counselor Applications</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Counselors who applied to your institute via the multi-institute portal.
+        </Typography>
+
+        {pendingApplications.length === 0 ? (
           <Paper elevation={0} sx={{ p: 4, borderRadius: '2rem', bgcolor: '#f8f4e5', textAlign: 'center' }}>
-            <Typography color="text.secondary">No clinical pending requests currently.</Typography>
+            <Typography color="text.secondary">No pending counselor applications.</Typography>
           </Paper>
         ) : (
           <Grid container spacing={3}>
-            {pendingCounselors.map((c) => (
-              <Grid item xs={12} md={6} lg={4} key={c.id}>
+            {pendingApplications.map((app) => (
+              <Grid item xs={12} md={6} lg={4} key={app.application_id}>
                 <Paper elevation={0} sx={{ p: 4, borderRadius: '2rem', bgcolor: 'background.paper' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Box 
-                      component="img" 
-                      src={c.profile_metadata?.documents?.profile_pic ? `http://localhost:5000/uploads/${c.profile_metadata?.documents?.profile_pic}` : 'https://via.placeholder.com/50'}
-                      sx={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                    <Box>
-                      <Typography fontWeight="bold" variant="h6">{c.profile_metadata?.full_name}</Typography>
-                      <Typography variant="body2" color="text.secondary">{c.email}</Typography>
-                    </Box>
+                  {/* Header: Name + Email */}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography fontWeight="bold" variant="h6">
+                      {app.counselor.full_name || 'Unnamed Counselor'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {app.counselor.email}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Applied {new Date(app.applied_at).toLocaleDateString()}
+                    </Typography>
                   </Box>
                   <Divider sx={{ mb: 2 }} />
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
-                    <Typography variant="body2"><b>Specialization:</b> {c.profile_metadata?.specialization || 'N/A'}</Typography>
-                    <Typography variant="body2"><b>Experience:</b> {c.profile_metadata?.experience || 'N/A'} years</Typography>
-                    <Typography variant="body2"><b>Bio:</b> {c.profile_metadata?.bio || 'N/A'}</Typography>
+                  {/* Action Buttons */}
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button
+                      variant="contained" color="primary" fullWidth
+                      onClick={() => handleApplicationAction(app.application_id, 'active')}
+                      sx={{ borderRadius: '2rem', py: 1.5, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outlined" color="error" fullWidth
+                      onClick={() => handleApplicationAction(app.application_id, 'rejected')}
+                      sx={{ borderRadius: '2rem', py: 1.5, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                      Reject
+                    </Button>
                   </Box>
-                  
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    {c.profile_metadata?.documents?.degree && (
-                      <Button size="small" variant="outlined" sx={{ borderRadius: '1rem', textTransform: 'none' }} onClick={() => window.open(`http://localhost:5000/uploads/${c.profile_metadata.documents.degree}`, '_blank')}>
-                        View Degree
-                      </Button>
-                    )}
-                    {c.profile_metadata?.documents?.license && (
-                      <Button size="small" variant="outlined" sx={{ borderRadius: '1rem', textTransform: 'none' }} onClick={() => window.open(`http://localhost:5000/uploads/${c.profile_metadata.documents.license}`, '_blank')}>
-                        View License
-                      </Button>
-                    )}
-                  </Box>
-                  
-                  <Button 
-                    variant="contained" 
-                    color="primary" 
-                    fullWidth 
-                    onClick={() => handleHire(c.id)}
-                    sx={{ borderRadius: '2rem', py: 1.5, textTransform: 'none', fontWeight: 'bold' }}
-                  >
-                    Hire / Approve
-                  </Button>
                 </Paper>
               </Grid>
             ))}

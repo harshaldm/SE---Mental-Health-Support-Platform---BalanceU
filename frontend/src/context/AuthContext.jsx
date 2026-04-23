@@ -1,27 +1,30 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { BASE_URL } from '../config/apiConfig';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
         try {
-            const response = await axios.get('http://localhost:5000/api/auth/me', {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await axios.get(`${BASE_URL}/api/auth/me`, {
+                headers: { Authorization: `Bearer ${storedToken}` }
             });
             setUser(response.data.user);
+            setToken(storedToken);
         } catch (error) {
             console.error('Auth check failed:', error);
             localStorage.removeItem('token');
+            setToken(null);
         }
       }
       setLoading(false);
@@ -31,10 +34,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await axios.post('http://localhost:5000/api/auth/login', { email, password });
-    const { token, user: userData } = response.data;
+    const response = await axios.post(`${BASE_URL}/api/auth/login`, { email, password });
+    const { token: newToken, user: userData } = response.data;
     
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
     setUser(userData);
     
     // Role-based redirect
@@ -49,12 +53,14 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('active_institute_id');
+    setToken(null);
     setUser(null);
     navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

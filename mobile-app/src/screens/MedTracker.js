@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { designTokens, globalStyles } from '../globalStyles';
-import { API_URL } from '../config';
+import { BASE_URL as API_URL } from '../config/apiConfig';
 
 // Fallback logic representing the API state over the local network
 export default function MedTracker({ token }) {

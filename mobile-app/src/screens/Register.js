@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, ScrollView, 
-  StyleSheet, Alert 
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  StyleSheet, Alert
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker'; // Optional for better dropdowns, but will use native standard if missing
 import { globalStyles, designTokens } from '../globalStyles';
+import { BASE_URL } from '../config/apiConfig';
 
 // A minimal shim for axios built on fetch, just in case axios isn't installed in mobile
 const fetchAPI = async (url, options = {}) => {
@@ -21,17 +22,17 @@ export default function Register({ setLoggedIn }) {
   const [institutes, setInstitutes] = useState([]);
   const [selectedInstitute, setSelectedInstitute] = useState('');
   const [schema, setSchema] = useState([]);
-  
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   const [customData, setCustomData] = useState({});
 
   useEffect(() => {
-    // URL uses local IPv4 for Expo
-    fetchAPI('http://192.168.29.107:5000/api/institutes/list')
+    // URL uses centralized config
+    fetchAPI(`${BASE_URL}/api/institutes/list`)
       .then(data => {
         setInstitutes(data.institutes);
       })
@@ -44,7 +45,7 @@ export default function Register({ setLoggedIn }) {
     setCustomData({});
     if (instId) {
       try {
-        const data = await fetchAPI(`http://192.168.29.107:5000/api/institutes/${instId}/form-schema`);
+        const data = await fetchAPI(`${BASE_URL}/api/institutes/${instId}/form-schema`);
         setSchema(data.schema || []);
       } catch (err) {
         console.error(err);
@@ -57,7 +58,7 @@ export default function Register({ setLoggedIn }) {
       return Alert.alert('Error', 'Passwords do not match');
     }
     try {
-      await fetchAPI('http://192.168.29.107:5000/api/auth/register-student', {
+      await fetchAPI(`${BASE_URL}/api/auth/register-student`, {
         method: 'POST',
         body: JSON.stringify({
           email,
@@ -98,34 +99,34 @@ export default function Register({ setLoggedIn }) {
         </View>
 
         <View style={styles.formSection}>
-          <TextInput 
-            style={styles.input} 
-            placeholder="Full Legal Name" 
+          <TextInput
+            style={styles.input}
+            placeholder="Full Legal Name"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             value={fullName}
             onChangeText={setFullName}
             autoCapitalize="words"
           />
-          <TextInput 
-            style={styles.input} 
-            placeholder="Official College Email" 
+          <TextInput
+            style={styles.input}
+            placeholder="Official College Email"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TextInput 
-            style={styles.input} 
-            placeholder="Password" 
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             secureTextEntry
             value={password}
             onChangeText={setPassword}
           />
-          <TextInput 
-            style={styles.input} 
-            placeholder="Confirm Password" 
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
             placeholderTextColor={designTokens.colors.onSurfaceVariant}
             secureTextEntry
             value={confirmPassword}
@@ -139,24 +140,24 @@ export default function Register({ setLoggedIn }) {
             {schema.map((field, idx) => (
               <View key={idx} style={{ marginBottom: 16 }}>
                 <Text style={styles.label}>{field.label} {field.required ? '*' : ''}</Text>
-                
+
                 {field.type === 'Dropdown' ? (
                   <View style={styles.pickerContainer}>
                     <Picker
                       selectedValue={customData[field.label] || ''}
-                      onValueChange={(val) => setCustomData({...customData, [field.label]: val})}
+                      onValueChange={(val) => setCustomData({ ...customData, [field.label]: val })}
                     >
                       <Picker.Item label="Select..." value="" />
                       {field.options.map((o, i) => <Picker.Item key={i} label={o} value={o} />)}
                     </Picker>
                   </View>
                 ) : (
-                  <TextInput 
-                    style={styles.input} 
+                  <TextInput
+                    style={styles.input}
                     placeholder={`Enter ${field.label}`}
                     placeholderTextColor={designTokens.colors.onSurfaceVariant}
                     value={customData[field.label] || ''}
-                    onChangeText={(val) => setCustomData({...customData, [field.label]: val})}
+                    onChangeText={(val) => setCustomData({ ...customData, [field.label]: val })}
                     keyboardType={field.type === 'Number' ? 'numeric' : field.type === 'Phone' ? 'phone-pad' : 'default'}
                   />
                 )}
@@ -165,8 +166,8 @@ export default function Register({ setLoggedIn }) {
           </View>
         )}
 
-        <TouchableOpacity 
-          style={[globalStyles.buttonPrimary, { marginTop: 32 }]} 
+        <TouchableOpacity
+          style={[globalStyles.buttonPrimary, { marginTop: 32 }]}
           onPress={handleRegister}
           disabled={!selectedInstitute || !email}
         >

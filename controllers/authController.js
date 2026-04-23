@@ -179,12 +179,13 @@ const getMe = async (req, res) => {
 
 // ─── Register Counselor (Uses Multer) ───
 // POST /api/auth/register-counselor
+// NOTE: No institute_id required. Counselors apply to institutes from their dashboard.
 const registerCounselor = async (req, res) => {
   try {
-    const { email, password, full_name, institute_id, specialization, experience, bio } = req.body;
+    const { email, password, full_name, specialization, experience, bio } = req.body;
 
-    if (!email || !password || !institute_id || !full_name) {
-      return res.status(400).json({ error: 'email, password, full_name, and institute_id are required' });
+    if (!email || !password || !full_name) {
+      return res.status(400).json({ error: 'email, password, and full_name are required' });
     }
 
     // Check for duplicate email
@@ -206,8 +207,8 @@ const registerCounselor = async (req, res) => {
       email,
       password_hash,
       role: 'Counselor',
-      institute_id,
-      is_hired: false, // Must be approved by Admin
+      institute_id: null, // Set via counselor_institutes table after approval
+      is_hired: false,
       profile_metadata: {
         full_name,
         specialization,
@@ -218,7 +219,7 @@ const registerCounselor = async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'Counselor application submitted successfully. Pending Admin approval.',
+      message: 'Counselor account created. Please apply to institutes from your dashboard.',
       user: { id: counselor.id, email: counselor.email, role: counselor.role, is_hired: false }
     });
   } catch (error) {

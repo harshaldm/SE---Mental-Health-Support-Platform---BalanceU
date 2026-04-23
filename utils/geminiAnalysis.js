@@ -22,24 +22,23 @@ const analyzeResponses = async (responses) => {
       .map((r, i) => `Q${i + 1}: "${r.question}"\nResponse: "${r.text}"`)
       .join('\n\n');
 
-    const prompt = `You are a clinical psychology assistant helping a licensed counselor review a student's mental health assessment responses.
+    const prompt = `You are a clinical psychology assistant analyzing a student's mental health assessment (GAD-7 or PHQ-9).
+    
+    Analyze these ${textResponses.length} responses for:
+    1. Emotional tone and cognitive distortions.
+    2. Potential clinical patterns (e.g., "Signs of Burnout", "Consistent with Social Anxiety", "Adjustment Stress").
+    3. Specific triggers or stressors mentioned.
 
-Analyze these ${textResponses.length} responses for:
-1. Emotional tone (e.g., hopeless, anxious, neutral)
-2. Cognitive distortions (e.g., catastrophizing, all-or-nothing thinking)
-3. Specific triggers or stressors mentioned
+    Student responses:
+    ${formattedResponses}
 
-Student responses:
-${formattedResponses}
-
-Provide a 3-sentence summary for a counselor. Be professional, empathetic, and concise.
-Also, assign a calculated risk level. The string riskLevel must be exactly one of: "No Risk", "Low", "Medium", or "High Risk".
-
-Respond strictly in pure JSON without markdown backticks, using the following structure:
-{
-  "summary": "...",
-  "riskLevel": "..."
-}`;
+    Respond strictly in pure JSON without markdown backticks, using the following structure:
+    {
+      "summary": "3-sentence empathetic and professional observation for the student.",
+      "riskLevel": "Low, Medium, or High (based on text severity)",
+      "potentialPattern": "A short 2-4 word clinical observation badge (e.g., 'Anxious Patterns')",
+      "disclaimer": "This is an AI-generated observation, not a medical diagnosis."
+    }`;
 
     console.log('─── 📤 Sending Prompt to Gemini ───');
     console.log(prompt);

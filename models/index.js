@@ -1,5 +1,6 @@
 const Institute = require('./Institute');
 const User = require('./User');
+const CounselorInstitute = require('./CounselorInstitute');
 const CustomFormSchema = require('./CustomFormSchema');
 const StudentDetails = require('./StudentDetails');
 const Appointment = require('./Appointment');
@@ -12,4 +13,4 @@ const Resource = require('./Resource');
 const Prescription = require('./Prescription');
 const MedicationLog = require('./MedicationLog');
 
-module.exports = { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, MoodStreak, Resource, Prescription, MedicationLog };
+module.exports = { Institute, User, CounselorInstitute, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, MoodStreak, Resource, Prescription, MedicationLog };
