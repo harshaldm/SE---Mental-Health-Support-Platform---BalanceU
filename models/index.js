@@ -12,5 +12,6 @@ const MoodStreak = require('./MoodStreak');
 const Resource = require('./Resource');
 const Prescription = require('./Prescription');
 const MedicationLog = require('./MedicationLog');
+const CounselingRequest = require('./CounselingRequest');
 
-module.exports = { Institute, User, CounselorInstitute, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, MoodStreak, Resource, Prescription, MedicationLog };
+module.exports = { Institute, User, CounselorInstitute, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, MoodStreak, Resource, Prescription, MedicationLog, CounselingRequest };

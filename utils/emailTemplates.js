@@ -180,7 +180,100 @@ const sharedAssessmentTemplate = ({ studentEmail, instituteName, quizType, riskL
   return wrapTemplate(body);
 };
 
-module.exports = { newAppointmentTemplate, statusUpdateTemplate, sharedAssessmentTemplate, crisisAlertTemplate };
+/**
+ * Email sent to Counselor when a student submits a support request.
+ */
+const supportRequestTemplate = ({ studentEmail, studentName, instituteName, score, riskLevel, counselorName }) => {
+  const isHighRisk = ['High', 'Severe', 'Moderately Severe'].includes(riskLevel);
+  const riskColor = isHighRisk ? '#dc2626' : '#f59e0b';
+  const riskBg    = isHighRisk ? '#fee2e2' : '#fef3c7';
+  const riskIcon  = isHighRisk ? '🚨' : '⚠️';
+
+  const body = `
+    <h2 style="color:#1f2937; margin:0 0 16px;">🤝 New Support Request</h2>
+    <p style="color:#4b5563; line-height:1.6; margin:0 0 20px;">
+      Hi <strong>${counselorName || 'Counselor'}</strong>,<br/>
+      A student at <strong>${instituteName}</strong> has requested your support and has shared their latest mental health assessment with you.
+    </p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="background:#f9fafb; border-radius:8px; margin-bottom:20px;">
+      <tr>
+        <td style="color:#6b7280; font-size:13px; width:130px;">Student</td>
+        <td style="color:#1f2937; font-weight:600;">${studentName || studentEmail}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Email</td>
+        <td style="color:#1f2937;">${studentEmail}</td>
+      </tr>
+      ${score != null ? `
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Assessment Score</td>
+        <td style="color:#1f2937; font-weight:600;">${score}</td>
+      </tr>` : ''}
+      ${riskLevel ? `
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Risk Level</td>
+        <td>
+          <span style="background:${riskBg}; color:${riskColor}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+            ${riskIcon} ${riskLevel}
+          </span>
+        </td>
+      </tr>` : ''}
+    </table>
+    <p style="color:#6b7280; font-size:14px; margin:0;">
+      Please log in to your BalanceU dashboard to <strong>Accept</strong> or <strong>Reject</strong> this request.
+    </p>
+  `;
+  return wrapTemplate(body);
+};
+
+/**
+ * Email sent to Student when a counselor responds to their support request.
+ */
+const requestResponseTemplate = ({ studentName, counselorName, counselorEmail, instituteName, action }) => {
+  const isAccepted = action === 'accepted';
+  const color  = isAccepted ? '#059669' : '#dc2626';
+  const bg     = isAccepted ? '#d1fae5' : '#fee2e2';
+  const icon   = isAccepted ? '✅' : '❌';
+  const label  = isAccepted ? 'Accepted' : 'Rejected';
+
+  const body = `
+    <h2 style="color:#1f2937; margin:0 0 16px;">${icon} Support Request ${label}</h2>
+    <p style="color:#4b5563; line-height:1.6; margin:0 0 20px;">
+      Hi <strong>${studentName || 'there'}</strong>,<br/>
+      ${isAccepted
+        ? `<strong>${counselorName}</strong> has <strong style="color:#059669;">accepted</strong> your support request at <strong>${instituteName}</strong>. They will be in touch with you shortly.`
+        : `Unfortunately, <strong>${counselorName}</strong> was unable to accept your request at this time. Please consider reaching out to another counselor at <strong>${instituteName}</strong>.`
+      }
+    </p>
+    <table width="100%" cellpadding="8" cellspacing="0" style="background:#f9fafb; border-radius:8px; margin-bottom:20px;">
+      <tr>
+        <td style="color:#6b7280; font-size:13px; width:130px;">Counselor</td>
+        <td style="color:#1f2937; font-weight:600;">${counselorName}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Contact</td>
+        <td style="color:#1f2937;">${counselorEmail}</td>
+      </tr>
+      <tr>
+        <td style="color:#6b7280; font-size:13px;">Decision</td>
+        <td>
+          <span style="background:${bg}; color:${color}; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
+            ${icon} ${label}
+          </span>
+        </td>
+      </tr>
+    </table>
+    <p style="color:#6b7280; font-size:14px; margin:0;">
+      ${isAccepted
+        ? 'You can also reach out via the BalanceU app messaging feature.'
+        : 'Log in to the BalanceU mobile app to explore other available counselors.'}
+    </p>
+  `;
+  return wrapTemplate(body);
+};
+
+module.exports = { newAppointmentTemplate, statusUpdateTemplate, sharedAssessmentTemplate, crisisAlertTemplate, supportRequestTemplate, requestResponseTemplate };
+
 
 /**
  * Email sent to Counselor when a student message is flagged as CRISIS by AI triage.

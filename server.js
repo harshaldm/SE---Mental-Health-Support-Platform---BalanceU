@@ -17,6 +17,7 @@ const chatRoutes = require('./routes/chat');
 const moodRoutes = require('./routes/mood');
 const resourceRoutes = require('./routes/resource');
 const medicationRoutes = require('./routes/medication');
+const requestRoutes = require('./routes/requests');
 
 // ─── Socket Handler ───
 const initializeSocket = require('./socket/chatHandler');
@@ -65,6 +66,7 @@ app.use('/api/mood', moodRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/meds', medicationRoutes);
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/requests', requestRoutes);
 
 // ─── Initialize Socket.io ───
 initializeSocket(io);

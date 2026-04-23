@@ -1,50 +1,79 @@
 import React, { useState, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  Animated, Dimensions, SafeAreaView, ScrollView 
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  Animated, Dimensions, SafeAreaView, ActivityIndicator,
 } from 'react-native';
-import { designTokens, globalStyles } from '../globalStyles';
+import { designTokens } from '../globalStyles';
 import QuizOnboarding from './QuizOnboarding';
 import QuizActive from './QuizActive';
 import MedTracker from './MedTracker';
+import SupportHub from './SupportHub';
+import CounselorDirectory from './CounselorDirectory';
 
+const C = designTokens.colors;
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
 
-export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' }) {
-  const [activeTab, setActiveTab] = useState('Quizzes');
+// ─── Tab configuration ─────────────────────────────────────────────────────────
+const TABS = [
+  { label: 'Quizzes',        icon: '📝' },
+  { label: 'Support Hub',    icon: '🫂' },
+  { label: 'Resource',       icon: '🌿' },
+  { label: 'Mood Calendar',  icon: '🗓️' },
+  { label: 'Fun Activities', icon: '🎮' },
+];
+
+export default function StudentDashboard({ setLoggedIn, token = '', user = null }) {
+  const [activeTab, setActiveTab]   = useState('Quizzes');
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [sharedData, setSharedData] = useState(null);
+  // CounselorDirectory overlay: null = hidden, object = visible
+  const [counselorDirData, setCounselorDirData] = useState(null);
 
-  // ANIMATION: Initialize drawer position (off-screen by default)
   const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
+  // ─── Loading guard — must be AFTER all hooks ─────────────────────────────
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={C.sage} />
+        <Text style={styles.loadingText}>Loading your space…</Text>
+      </View>
+    );
+  }
+
+  // ─── Drawer animation ─────────────────────────────────────────────────────
   const toggleDrawer = () => {
-    const toValue = isDrawerOpen ? -DRAWER_WIDTH : 0;
-    Animated.timing(drawerAnim, {
-      toValue,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    const to = isDrawerOpen ? -DRAWER_WIDTH : 0;
+    Animated.spring(drawerAnim, { toValue: to, useNativeDriver: true, tension: 80, friction: 12 }).start();
     setIsDrawerOpen(!isDrawerOpen);
   };
 
-  const handleTabPress = (tab) => {
-    setActiveTab(tab);
-    setCurrentQuiz(null); // Reset quiz state when switching tabs
-    setSharedData(null); // Clear context when manually switching
+  const handleTabPress = (label) => {
+    setActiveTab(label);
+    setCurrentQuiz(null);
+    setSharedData(null);
     toggleDrawer();
   };
 
+  // ─── Content router ───────────────────────────────────────────────────────
   const renderContent = () => {
     if (activeTab === 'Quizzes') {
       if (currentQuiz) {
         return (
-          <QuizActive 
-            quizType={currentQuiz} 
+          <QuizActive
+            quizType={currentQuiz}
             token={token}
             onCancel={() => setCurrentQuiz(null)}
+            onConnectWithSupport={(assessmentData) => {
+              setCounselorDirData(assessmentData);
+              setCurrentQuiz(null);
+            }}
+            onGoToResources={() => {
+              setCurrentQuiz(null);
+              setActiveTab('Resource');
+            }}
             onComplete={(nextTab, data) => {
               setCurrentQuiz(null);
               if (data) setSharedData(data);
@@ -57,201 +86,219 @@ export default function StudentDashboard({ setLoggedIn, token = 'dummy_token' })
     }
 
     switch (activeTab) {
-      case 'Wellness':
-        return <MedTracker token={token} />;
-      case 'Counselor':
+      case 'Support Hub':
         return (
-          <View style={styles.placeholderContainer}>
-            <Text style={styles.tabTitle}>Counselor Support</Text>
-            {sharedData?.riskLevel && (
-               <View style={[styles.alertBox, { backgroundColor: designTokens.colors.errorContainer }]}>
-                 <Text style={{ color: designTokens.colors.error, fontWeight: 'bold' }}>
-                   Priority Connection: {sharedData.riskLevel} Risk Detected
-                 </Text>
-               </View>
-            )}
-            <Text style={globalStyles.textBody}>
-              {sharedData?.riskLevel 
-                ? "Your assessment has been flagged for immediate counselor review. A professional will reach out shortly."
-                : "Connect with your institutional counselor here."}
-            </Text>
-          </View>
+          <SupportHub
+            token={token}
+            user={user}
+            latestAssessment={sharedData}
+            onOpenCounselorDirectory={(data) => setCounselorDirData(data || {})}
+          />
         );
+      case 'Resource':
+        return <ResourcePlaceholder />;
       default:
         return (
-          <View style={styles.placeholderContainer}>
-            <Text style={styles.tabTitle}>{activeTab}</Text>
-            <Text style={globalStyles.textBody}>Component under development.</Text>
+          <View style={styles.placeholder}>
+            <Text style={styles.placeholderIcon}>🚧</Text>
+            <Text style={styles.placeholderTitle}>{activeTab}</Text>
+            <Text style={styles.placeholderMsg}>Coming soon.</Text>
           </View>
         );
     }
   };
 
-  const menuItems = [
-    { label: 'Quizzes', icon: '📝' },
-    { label: 'Counselor', icon: '🫂' },
-    { label: 'Wellness', icon: '💊' },
-    { label: 'Fun Activities', icon: '🎮' },
-    { label: 'Mood Calendar', icon: '🗓️' },
-  ];
-
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.root}>
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleDrawer} style={styles.menuBtn}>
-          <Text style={{ fontSize: 24 }}>☰</Text>
+        <TouchableOpacity onPress={toggleDrawer} style={styles.menuBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+          <View style={styles.hamburger}>
+            <View style={styles.hamburgerLine} />
+            <View style={[styles.hamburgerLine, { width: 18 }]} />
+            <View style={styles.hamburgerLine} />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{activeTab}</Text>
-        <View style={{ width: 40 }} />
+
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLogo}>BalanceU</Text>
+          <Text style={styles.headerTab}>{activeTab}</Text>
+        </View>
+
+        <View style={styles.headerAvatar}>
+          <Text style={styles.headerAvatarText}>
+            {(user?.profile_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
+          </Text>
+        </View>
       </View>
 
-      {/* Main Content Area */}
+      {/* ── Main content ── */}
       <View style={styles.main}>
         {renderContent()}
       </View>
 
-      {/* Drawer Overlay */}
-      {isDrawerOpen && (
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={toggleDrawer} 
-          style={styles.overlay} 
-        />
+      {/* ── CounselorDirectory full-screen overlay ── */}
+      {counselorDirData && (
+        <View style={StyleSheet.absoluteFill}>
+          <CounselorDirectory
+            instituteId={user?.institute_id}
+            score={counselorDirData.score}
+            riskLevel={counselorDirData.riskLevel}
+            summary={counselorDirData.summary}
+            token={token}
+            onBack={() => setCounselorDirData(null)}
+          />
+        </View>
       )}
 
-      {/* Animated Side Drawer */}
+      {/* ── Drawer backdrop ── */}
+      {isDrawerOpen && (
+        <TouchableOpacity activeOpacity={1} onPress={toggleDrawer} style={styles.overlay} />
+      )}
+
+      {/* ── Side Drawer ── */}
       <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-        <View style={styles.drawerHeader}>
-          <Text style={[globalStyles.textDisplay, { fontSize: 24, color: designTokens.colors.primary }]}>BalanceU</Text>
+        <View style={styles.drawerTop}>
+          <Text style={styles.drawerLogo}>🌿 BalanceU</Text>
+          <Text style={styles.drawerGreeting}>
+            Hi, {user?.profile_metadata?.full_name?.split(' ')[0] || 'there'} 👋
+          </Text>
         </View>
-        
+
         <View style={styles.drawerItems}>
-          {menuItems.map((item) => (
-            <TouchableOpacity 
-              key={item.label} 
-              style={[styles.drawerItem, activeTab === item.label && styles.activeItem]}
-              onPress={() => handleTabPress(item.label)}
+          {TABS.map(({ label, icon }) => (
+            <TouchableOpacity
+              key={label}
+              style={[styles.drawerItem, activeTab === label && styles.drawerItemActive]}
+              onPress={() => handleTabPress(label)}
             >
-              <Text style={styles.drawerIcon}>{item.icon}</Text>
-              <Text style={[styles.drawerLabel, activeTab === item.label && styles.activeLabel]}>{item.label}</Text>
+              <Text style={styles.drawerIcon}>{icon}</Text>
+              <Text style={[styles.drawerLabel, activeTab === label && styles.drawerLabelActive]}>
+                {label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <TouchableOpacity 
-          style={styles.logoutBtn} 
-          onPress={() => setLoggedIn(false)}
-        >
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => setLoggedIn(false)}>
+          <Text style={styles.logoutText}>🚪 Logout</Text>
         </TouchableOpacity>
       </Animated.View>
     </SafeAreaView>
   );
 }
 
+// ─── Resource Placeholder ─────────────────────────────────────────────────────
+function ResourcePlaceholder() {
+  return (
+    <View style={styles.placeholder}>
+      <Text style={{ fontSize: 52, marginBottom: 16 }}>📚</Text>
+      <Text style={styles.placeholderTitle}>Resources</Text>
+      <Text style={styles.placeholderMsg}>
+        Curated mental wellness readings, breathing exercises, and guided practices.
+        Coming soon.
+      </Text>
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const C2 = designTokens.colors;
+const R  = designTokens.radius;
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: designTokens.colors.surface,
+  root: { flex: 1, backgroundColor: C2.cream },
+
+  // Loading
+  loadingContainer: {
+    flex: 1, backgroundColor: C2.cream,
+    alignItems: 'center', justifyContent: 'center', gap: 14,
   },
+  loadingText: { fontSize: 14, color: C2.muted, fontWeight: '500' },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    height: 60,
-    backgroundColor: designTokens.colors.surface,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: C2.border,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: designTokens.colors.onSurface,
+  menuBtn: { padding: 4 },
+  hamburger: { gap: 5 },
+  hamburgerLine: {
+    height: 2,
+    width: 24,
+    backgroundColor: C2.charcoal,
+    borderRadius: 2,
   },
-  menuBtn: {
-    padding: 10,
+  headerCenter: { alignItems: 'center' },
+  headerLogo: { fontSize: 11, fontWeight: '800', color: C2.sage, letterSpacing: 1.5 },
+  headerTab: { fontSize: 17, fontWeight: '800', color: C2.charcoal, marginTop: 1 },
+  headerAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: C2.sageLight,
+    alignItems: 'center', justifyContent: 'center',
   },
-  main: {
+  headerAvatarText: { fontSize: 15, fontWeight: '800', color: C2.sage },
+
+  // Main
+  main: { flex: 1 },
+
+  // Placeholder tabs
+  placeholder: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: C2.cream,
   },
-  contentScroll: {
-    padding: 24,
+  placeholderIcon: { fontSize: 48, marginBottom: 14 },
+  placeholderTitle: { fontSize: 22, fontWeight: '800', color: C2.charcoal, marginBottom: 10 },
+  placeholderMsg: {
+    fontSize: 14, color: C2.muted, textAlign: 'center', lineHeight: 22,
   },
-  tabTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: designTokens.colors.onSurface,
-    marginBottom: 20,
-  },
-  placeholderContainer: {
-    padding: 24,
-  },
-  cardHighlight: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: designTokens.colors.primary,
-    marginBottom: 8,
-  },
-  cardDesc: {
-    color: designTokens.colors.onSurfaceVariant,
-  },
+
+  // Drawer backdrop
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(44,44,44,0.35)',
     zIndex: 10,
   },
+
+  // Drawer
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
+    position: 'absolute', top: 0, bottom: 0, left: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: designTokens.colors.surfaceContainerLow,
+    backgroundColor: '#fff',
     zIndex: 20,
-    paddingTop: 60,
+    paddingTop: 56,
     paddingHorizontal: 20,
-    boxShadow: '4px 0 10px rgba(0,0,0,0.1)',
+    borderRightWidth: 1,
+    borderRightColor: C2.border,
   },
-  drawerHeader: {
-    marginBottom: 40,
-    paddingHorizontal: 10,
-  },
-  drawerItems: {
-    flex: 1,
-  },
+  drawerTop: { marginBottom: 36 },
+  drawerLogo: { fontSize: 18, fontWeight: '900', color: C2.sage, marginBottom: 6 },
+  drawerGreeting: { fontSize: 14, color: C2.muted, fontWeight: '500' },
+  drawerItems: { flex: 1, gap: 4 },
   drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderRadius: R.md,
+    gap: 14,
   },
-  activeItem: {
-    backgroundColor: designTokens.colors.primaryContainer,
-  },
-  drawerIcon: {
-    fontSize: 20,
-    marginRight: 15,
-  },
-  drawerLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: designTokens.colors.onSurfaceVariant,
-  },
-  activeLabel: {
-    color: designTokens.colors.primary,
-  },
+  drawerItemActive: { backgroundColor: C2.sageLight },
+  drawerIcon: { fontSize: 18 },
+  drawerLabel: { fontSize: 15, fontWeight: '600', color: C2.muted },
+  drawerLabelActive: { color: C2.sage, fontWeight: '800' },
   logoutBtn: {
-    marginBottom: 40,
-    padding: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    paddingVertical: 16, marginBottom: 32,
+    borderTopWidth: 1, borderTopColor: C2.border,
   },
-  logoutText: {
-    color: designTokens.colors.error,
-    fontWeight: 'bold',
-    fontSize: 16,
-  }
+  logoutText: { fontSize: 14, fontWeight: '700', color: C2.error },
 });

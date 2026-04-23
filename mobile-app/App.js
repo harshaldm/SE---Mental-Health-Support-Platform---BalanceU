@@ -21,22 +21,22 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={globalStyles.safeArea}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFBF7' }}>
       {isLoggedIn ? (
-        <StudentDashboard 
-          setLoggedIn={setLoggedIn} 
-          token={userToken} 
-          user={userData} 
+        <StudentDashboard
+          setLoggedIn={setLoggedIn}
+          token={userToken}
+          user={userData}
         />
       ) : showRegister ? (
         <Register setLoggedIn={setLoggedIn} />
       ) : (
-        <Login 
+        <Login
           onLoginSuccess={handleLoginSuccess}
-          setShowRegister={setShowRegister} 
+          setShowRegister={setShowRegister}
         />
       )}
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
     </SafeAreaView>
   );
 }

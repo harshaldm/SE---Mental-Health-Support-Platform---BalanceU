@@ -39,7 +39,7 @@ const OPTIONS = [
   { value: 3, label: 'Nearly every day' }
 ];
 
-export default function QuizActive({ quizType, onComplete, onCancel, token: propToken }) {
+export default function QuizActive({ quizType, onComplete, onCancel, token: propToken, onConnectWithSupport, onGoToResources }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [reflections, setReflections] = useState([]);
@@ -97,70 +97,86 @@ export default function QuizActive({ quizType, onComplete, onCancel, token: prop
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  };const progress = ((currentIndex + 1) / questions.length) * 100;
 
   if (resultData) {
     return (
-      <AssessmentResults 
+      <AssessmentResults
         quizType={quizType}
         aiInsights={resultData.aiInsights}
         onReturn={() => onComplete('Quizzes')}
+        onConnectWithSupport={
+          onConnectWithSupport
+            ? () => onConnectWithSupport({
+                score:     resultData.aiInsights?.score     ?? null,
+                riskLevel: resultData.aiInsights?.riskLevel || null,
+                summary:   resultData.aiInsights?.summary   || null,
+              })
+            : undefined
+        }
+        onGoToResources={onGoToResources}
       />
     );
   }
-
-
   const isNextDisabled = currentAnswer === undefined || currentReflection.trim().length === 0;
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.stepCount}>Question {currentIndex + 1} of {questions.length}</Text>
+        <Text style={styles.stepCount}>
+          Q {currentIndex + 1} / {questions.length}
+        </Text>
         <TouchableOpacity onPress={onCancel}>
           <Text style={styles.cancelLink}>Cancel</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Progress bar */}
       <View style={styles.progressContainer}>
         <View style={[styles.progressBar, { width: `${progress}%` }]} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Quiz type tag */}
+        <Text style={styles.quizTag}>{quizType}</Text>
+
+        {/* Question */}
         <Text style={styles.questionText}>{currentQuestion}</Text>
 
+        {/* Options */}
         <View style={styles.optionsGrid}>
-          {OPTIONS.map((opt) => (
-            <TouchableOpacity 
-              key={opt.value} 
-              style={[
-                styles.optionBtn, 
-                currentAnswer === opt.value && styles.optionBtnActive
-              ]}
-              onPress={() => {
-                const newAns = [...answers];
-                newAns[currentIndex] = opt.value;
-                setAnswers(newAns);
-              }}
-            >
-              <Text style={[
-                styles.optionLabel,
-                currentAnswer === opt.value && styles.optionLabelActive
-              ]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {OPTIONS.map((opt) => {
+            const isSelected = currentAnswer === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.optionBtn, isSelected && styles.optionBtnActive]}
+                onPress={() => {
+                  const newAns = [...answers];
+                  newAns[currentIndex] = opt.value;
+                  setAnswers(newAns);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.optionLabel, isSelected && styles.optionLabelActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <Text style={styles.reflectionLabel}>Why do you feel this way? (250 chars max)</Text>
-        <TextInput 
+        {/* Reflection */}
+        <Text style={styles.reflectionLabel}>
+          Why do you feel this way? <Text style={{ color: C.sage }}>*</Text>
+        </Text>
+        <TextInput
           style={styles.reflectionInput}
           multiline
           numberOfLines={4}
-          placeholder="Briefly describe your thoughts..."
-          placeholderTextColor={designTokens.colors.onSurfaceVariant}
+          placeholder="Briefly describe your thoughts…"
+          placeholderTextColor={C.muted}
           maxLength={250}
           value={currentReflection}
           onChangeText={(text) => {
@@ -172,22 +188,19 @@ export default function QuizActive({ quizType, onComplete, onCancel, token: prop
         <Text style={styles.charCount}>{currentReflection.length}/250</Text>
       </ScrollView>
 
+      {/* Footer / Next button */}
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[
-            globalStyles.buttonPrimary, 
-            isNextDisabled && styles.btnDisabled,
-            { width: '100%' }
-          ]}
+        <TouchableOpacity
+          style={[styles.nextBtn, isNextDisabled && styles.btnDisabled]}
           disabled={isNextDisabled || isSubmitting}
           onPress={handleNext}
         >
           {isSubmitting ? (
-             <ActivityIndicator color={designTokens.colors.onPrimary} />
+            <ActivityIndicator color="#fff" />
           ) : (
-             <Text style={globalStyles.buttonText}>
-               {currentIndex === questions.length - 1 ? 'Finish & Submit' : 'Next Question'}
-             </Text>
+            <Text style={styles.nextBtnText}>
+              {currentIndex === questions.length - 1 ? 'Finish & Submit ✓' : 'Next Question →'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -195,100 +208,139 @@ export default function QuizActive({ quizType, onComplete, onCancel, token: prop
   );
 }
 
+const C = designTokens.colors;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: designTokens.colors.surface,
+    backgroundColor: C.cream, // #FDFBF7
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingTop: 20,
+    paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   stepCount: {
     fontSize: 14,
-    fontWeight: '700',
-    color: designTokens.colors.onSurfaceVariant,
+    fontWeight: '800',
+    color: '#7A7A6E',
   },
   cancelLink: {
-    color: designTokens.colors.error,
-    fontWeight: '600',
+    color: C.error,
+    fontWeight: '700',
+    fontSize: 14,
   },
   progressContainer: {
-    height: 6,
-    backgroundColor: '#eee',
+    height: 8,
+    backgroundColor: '#E0D9CE',
     marginHorizontal: 24,
-    borderRadius: 3,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#8DA399',
+    backgroundColor: C.sage, // #556B5F
   },
   content: {
     paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  quizTag: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: C.charcoal,
+    opacity: 0.5,
+    marginBottom: 8,
+    letterSpacing: 1.2,
   },
   questionText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: designTokens.colors.onSurface,
+    fontSize: 24,
+    fontWeight: '800',
+    color: C.charcoal,
     marginBottom: 32,
-    lineHeight: 30,
+    lineHeight: 32,
   },
   optionsGrid: {
     gap: 12,
     marginBottom: 32,
   },
   optionBtn: {
-    backgroundColor: designTokens.colors.surfaceContainerLow,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#E0D9CE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   optionBtnActive: {
-    backgroundColor: '#e6f0eb',
-    borderColor: '#8DA399',
+    backgroundColor: C.sage, // #556B5F
+    borderColor: C.sage,
   },
   optionLabel: {
     fontSize: 16,
-    color: designTokens.colors.onSurface,
-    fontWeight: '600',
+    color: C.charcoal,
+    fontWeight: '700',
   },
   optionLabelActive: {
-    color: '#4e635a',
+    color: '#FFFFFF',
   },
   reflectionLabel: {
     fontSize: 14,
-    fontWeight: '700',
-    color: designTokens.colors.onSurface,
-    marginBottom: 8,
+    fontWeight: '800',
+    color: C.charcoal,
+    marginBottom: 12,
   },
   reflectionInput: {
-    backgroundColor: designTokens.colors.surfaceContainerLow,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
     height: 120,
     textAlignVertical: 'top',
-    color: designTokens.colors.onSurface,
+    color: C.charcoal,
     fontSize: 16,
+    borderWidth: 1.5,
+    borderColor: '#E0D9CE',
   },
   charCount: {
     textAlign: 'right',
     fontSize: 12,
-    color: designTokens.colors.onSurfaceVariant,
-    marginTop: 4,
+    color: '#7A7A6E',
+    marginTop: 8,
+    fontWeight: '700',
   },
   footer: {
     padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    backgroundColor: C.cream,
+  },
+  nextBtn: {
+    backgroundColor: C.sage,
+    paddingVertical: 18,
+    borderRadius: 100, // Pill shaped
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: C.sage,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  nextBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
   btnDisabled: {
-    backgroundColor: '#cbd5d0',
+    backgroundColor: '#CBD5D0',
+    shadowOpacity: 0,
+    elevation: 0,
   }
 });
