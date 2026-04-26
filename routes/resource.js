@@ -3,6 +3,9 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const authorizeRole = require('../middleware/authorizeRole');
 const Resource = require('../models/Resource');
+const AssignedResource = require('../models/AssignedResource');
+const logger = require('../utils/logger');
+const { searchResources } = require('../utils/geminiService');
 
 // ─── POST /api/resources ───
 // Counselors add new wellness materials
@@ -72,6 +75,64 @@ router.get('/', authMiddleware, authorizeRole(['Student', 'Counselor']), async (
   } catch (error) {
     console.error('❌ Error fetching resources:', error.message);
     res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
+// ─── POST /api/resources/search ───
+// Gemini Search Integration
+router.post('/search', authMiddleware, async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: 'Search query is required' });
+
+    logger.start(`[resource.js : search : 12] -> API Search requested for: ${query}`);
+    const results = await searchResources(query);
+
+    res.status(200).json({ results });
+  } catch (error) {
+    logger.error(`[resource.js : search : 17] -> Search failed: ${error.message}`);
+    res.status(500).json({ error: 'Resource search failed' });
+  }
+});
+
+// ─── POST /api/resources/assign ───
+// Counselors assign specifically to a student
+router.post('/assign', authMiddleware, authorizeRole(['Counselor']), async (req, res) => {
+  try {
+    const counselor_id = req.user.id;
+    const { title, url, type, student_id } = req.body;
+
+    if (!title || !url || !type || !student_id) {
+      return res.status(400).json({ error: 'title, url, type, and student_id are required' });
+    }
+
+    const assigned = await AssignedResource.create({
+      title, url, type, student_id, counselor_id
+    });
+
+    logger.success(`[resource.js : assign : 37] -> Resource assigned to student ${student_id}`);
+    res.status(201).json({ message: 'Resource assigned successfully', assigned });
+  } catch (error) {
+    logger.error(`[resource.js : assign : 40] -> Assignment failed: ${error.message}`);
+    res.status(500).json({ error: 'Failed to assign resource' });
+  }
+});
+
+// ─── GET /api/resources/assigned ───
+// Students fetch their specific assigned list
+router.get('/assigned', authMiddleware, authorizeRole(['Student']), async (req, res) => {
+  try {
+    const student_id = req.user.id;
+    logger.start(`[resource.js : getAssigned : 50] -> Fetching assigned resources for student: ${student_id}`);
+
+    const assigned = await AssignedResource.find({ student_id })
+      .sort({ assigned_at: -1 })
+      .lean();
+
+    res.status(200).json({ assigned });
+  } catch (error) {
+    logger.error(`[resource.js : getAssigned : 58] -> Fetch failed: ${error.message}`);
+    res.status(500).json({ error: 'Failed to fetch assigned resources' });
   }
 });
 

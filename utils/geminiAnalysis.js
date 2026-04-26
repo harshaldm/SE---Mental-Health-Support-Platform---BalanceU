@@ -1,4 +1,5 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const logger = require('./logger');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -40,31 +41,48 @@ const analyzeResponses = async (responses) => {
       "disclaimer": "This is an AI-generated observation, not a medical diagnosis."
     }`;
 
-    console.log('─── 📤 Sending Prompt to Gemini ───');
-    console.log(prompt);
+    logger.info(`[geminiAnalysis.js : analyzeResponses : 43] -> Sending prompt to Gemini...`);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const result = await model.generateContent(prompt);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+      logger.success(`[geminiAnalysis.js : analyzeResponses : 49] -> Gemini call successful.`);
+    } catch (apiErr) {
+      logger.error(`[geminiAnalysis.js : analyzeResponses : 51] -> WARNING: Gemini API failed. Injecting Offline Fallback.`);
+      return {
+        summary: "AI Analysis Offline. Your counselor will review your detailed responses manually to provide the best support.",
+        riskLevel: "Manual Review Required",
+        potentialPattern: "Assessment Pending",
+        disclaimer: "AI observation is temporarily unavailable. Data has been securely saved for professional review."
+      };
+    }
 
     // Parse the JSON string
     const responseText = result.response.text();
-    console.log('─── 📥 Raw Response from Gemini ───');
-    console.log(responseText);
-
     const rawText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(rawText);
-
-    console.log('─── ⚙️ Parsed AI JSON ───');
-    console.log(JSON.stringify(parsed, null, 2));
-
-    return parsed;
-  } catch (error) {
-    console.error('❌ Gemini analysis failed:', error.message);
-    // Throw error if it's a parsing issue or serious API failure to let controller handle it
-    if (error instanceof SyntaxError) {
-      console.error('JSON Parsing Error in AI Response');
+    
+    try {
+      const parsed = JSON.parse(rawText);
+      return parsed;
+    } catch (parseErr) {
+      logger.error(`[geminiAnalysis.js : analyzeResponses : 65] -> JSON Parsing Error. Injecting Offline Fallback.`);
+      return {
+        summary: "AI Analysis Offline. Your counselor will review your detailed responses manually to provide the best support.",
+        riskLevel: "Manual Review Required",
+        potentialPattern: "Assessment Pending",
+        disclaimer: "AI observation is temporarily unavailable. Data has been securely saved for professional review."
+      };
     }
-    return null; // Non-blocking fallback
+  } catch (error) {
+    logger.error(`[geminiAnalysis.js : analyzeResponses : 74] -> Fatal Error: ${error.message}`);
+    return {
+      summary: "AI Analysis Offline. Your counselor will review your detailed responses manually to provide the best support.",
+      riskLevel: "Manual Review Required",
+      potentialPattern: "Assessment Pending",
+      disclaimer: "AI observation is temporarily unavailable. Data has been securely saved for professional review."
+    };
   }
 };
 

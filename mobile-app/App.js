@@ -20,6 +20,10 @@ export default function App() {
     setLoggedIn(true);
   };
 
+  const handleUserUpdate = (updatedUser) => {
+    setUserData(prev => ({ ...prev, ...updatedUser }));
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFBF7' }}>
       {isLoggedIn ? (
@@ -27,6 +31,7 @@ export default function App() {
           setLoggedIn={setLoggedIn}
           token={userToken}
           user={userData}
+          onUserUpdate={handleUserUpdate}
         />
       ) : showRegister ? (
         <Register setLoggedIn={setLoggedIn} />

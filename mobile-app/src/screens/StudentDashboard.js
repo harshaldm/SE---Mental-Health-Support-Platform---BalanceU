@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Dimensions, SafeAreaView, ActivityIndicator,
+  Animated, Dimensions, SafeAreaView, ActivityIndicator, Image // Added Image here
 } from 'react-native';
 import { designTokens } from '../globalStyles';
 import QuizOnboarding from './QuizOnboarding';
@@ -9,6 +9,13 @@ import QuizActive from './QuizActive';
 import MedTracker from './MedTracker';
 import SupportHub from './SupportHub';
 import CounselorDirectory from './CounselorDirectory';
+import ResourceTab from './ResourceTab';
+import MoodCalendarScreen from './MoodCalendarScreen';
+import ProfileScreen from './ProfileScreen';
+import { Modal } from 'react-native';
+import axios from 'axios';
+import logger from '../utils/logger';
+import { BASE_URL } from '../config/apiConfig';
 
 const C = designTokens.colors;
 const { width } = Dimensions.get('window');
@@ -16,22 +23,58 @@ const DRAWER_WIDTH = width * 0.75;
 
 // ─── Tab configuration ─────────────────────────────────────────────────────────
 const TABS = [
-  { label: 'Quizzes',        icon: '📝' },
-  { label: 'Support Hub',    icon: '🫂' },
-  { label: 'Resource',       icon: '🌿' },
-  { label: 'Mood Calendar',  icon: '🗓️' },
-  { label: 'Fun Activities', icon: '🎮' },
+  { label: 'Quizzes', icon: '📝' },
+  { label: 'Support Hub', icon: '🫂' },
+  { label: 'Resource', icon: '🌿' },
+  { label: 'Mood Calendar', icon: '🗓️' },
+  { label: 'Profile', icon: '👤' },
 ];
 
-export default function StudentDashboard({ setLoggedIn, token = '', user = null }) {
-  const [activeTab, setActiveTab]   = useState('Quizzes');
+export default function StudentDashboard({ setLoggedIn, token = '', user = null, onUserUpdate }) {
+  const [activeTab, setActiveTab] = useState('Quizzes');
   const [currentQuiz, setCurrentQuiz] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [sharedData, setSharedData] = useState(null);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [isMoodLogged, setIsMoodLogged] = useState(true); // Default true to prevent flicker
   // CounselorDirectory overlay: null = hidden, object = visible
   const [counselorDirData, setCounselorDirData] = useState(null);
+  const [resourceParams, setResourceParams] = useState(null);
 
   const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+
+  // ─── Mood Check Lifecycle ───────────────────────────────────────────────
+  useEffect(() => {
+    if (user && token) {
+      checkMoodStatus();
+    }
+  }, [user, token]);
+
+  const checkMoodStatus = async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/mood/check`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.data.hasLoggedToday) {
+        setIsMoodLogged(false);
+        setShowMoodModal(true);
+      }
+    } catch (err) {
+      logger.error('Dashboard', 'Mood Check Failed', err);
+    }
+  };
+
+  const handleMoodSelect = async (score) => {
+    try {
+      await axios.post(`${BASE_URL}/api/mood/log`, { mood_score: score }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShowMoodModal(false);
+      setIsMoodLogged(true);
+    } catch (err) {
+      logger.error('Dashboard', 'Mood Log Failed', err);
+    }
+  };
 
   // ─── Loading guard — must be AFTER all hooks ─────────────────────────────
   if (!user) {
@@ -70,8 +113,9 @@ export default function StudentDashboard({ setLoggedIn, token = '', user = null 
               setCounselorDirData(assessmentData);
               setCurrentQuiz(null);
             }}
-            onGoToResources={() => {
+            onGoToResources={(pattern) => {
               setCurrentQuiz(null);
+              setResourceParams(pattern);
               setActiveTab('Resource');
             }}
             onComplete={(nextTab, data) => {
@@ -96,7 +140,11 @@ export default function StudentDashboard({ setLoggedIn, token = '', user = null 
           />
         );
       case 'Resource':
-        return <ResourcePlaceholder />;
+        return <ResourceTab token={token} initialSearch={resourceParams} />;
+      case 'Mood Calendar':
+        return <MoodCalendarScreen token={token} />;
+      case 'Profile':
+        return <ProfileScreen token={token} user={user} onLogout={() => setLoggedIn(false)} onUserUpdate={onUserUpdate} />;
       default:
         return (
           <View style={styles.placeholder}>
@@ -112,7 +160,7 @@ export default function StudentDashboard({ setLoggedIn, token = '', user = null 
     <SafeAreaView style={styles.root}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={toggleDrawer} style={styles.menuBtn} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+        <TouchableOpacity onPress={toggleDrawer} style={styles.menuBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <View style={styles.hamburger}>
             <View style={styles.hamburgerLine} />
             <View style={[styles.hamburgerLine, { width: 18 }]} />
@@ -125,11 +173,28 @@ export default function StudentDashboard({ setLoggedIn, token = '', user = null 
           <Text style={styles.headerTab}>{activeTab}</Text>
         </View>
 
-        <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>
-            {(user?.profile_metadata?.full_name || user?.email || 'U')[0].toUpperCase()}
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={styles.headerAvatar}
+          onPress={() => setActiveTab('Profile')}
+        >
+          {user?.profile_metadata?.avatar_url ? (
+            <>
+              <Image
+                source={{ uri: user.profile_metadata.avatar_url }}
+                style={styles.headerAvatarImage}
+                resizeMode="cover"
+              />
+              {(() => {
+                logger.info(`[MainHeader.js : renderLogo : 185] -> Header logo updated to Image view.`);
+                return null;
+              })()}
+            </>
+          ) : (
+            <Text style={styles.headerAvatarText}>
+              {(user?.full_name || user?.email || 'U')[0].toUpperCase()}
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* ── Main content ── */}
@@ -184,6 +249,35 @@ export default function StudentDashboard({ setLoggedIn, token = '', user = null 
           <Text style={styles.logoutText}>🚪 Logout</Text>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* ── Daily Mood Flashcard ── */}
+      <Modal visible={showMoodModal} transparent animationType="fade">
+        <View style={styles.modalOverlayFull}>
+          <View style={styles.moodCard}>
+            <Text style={styles.moodHeader}>How is your day going so far?</Text>
+            <View style={styles.emojiRow}>
+              {[
+                { s: 1, e: '😔' },
+                { s: 2, e: '😐' },
+                { s: 3, e: '🙂' },
+                { s: 4, e: '😊' },
+                { s: 5, e: '✨' }
+              ].map(item => (
+                <TouchableOpacity
+                  key={item.s}
+                  style={styles.emojiBtn}
+                  onPress={() => handleMoodSelect(item.s)}
+                >
+                  <Text style={styles.emojiText}>{item.e}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.skipBtn} onPress={() => setShowMoodModal(false)}>
+              <Text style={styles.skipText}>Not now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -204,7 +298,7 @@ function ResourcePlaceholder() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const C2 = designTokens.colors;
-const R  = designTokens.radius;
+const R = designTokens.radius;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C2.cream },
@@ -240,10 +334,12 @@ const styles = StyleSheet.create({
   headerTab: { fontSize: 17, fontWeight: '800', color: C2.charcoal, marginTop: 1 },
   headerAvatar: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C2.sageLight,
+    backgroundColor: C2.sage,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C2.sage, overflow: 'hidden'
   },
-  headerAvatarText: { fontSize: 15, fontWeight: '800', color: C2.sage },
+  headerAvatarImage: { width: '100%', height: '100%' },
+  headerAvatarText: { fontSize: 15, fontWeight: '800', color: '#fff' },
 
   // Main
   main: { flex: 1 },
@@ -301,4 +397,40 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: C2.border,
   },
   logoutText: { fontSize: 14, fontWeight: '700', color: C2.error },
+
+  // Mood Modal
+  modalOverlayFull: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center', padding: 30,
+  },
+  moodCard: {
+    backgroundColor: C2.cream,
+    width: '100%',
+    borderRadius: 32,
+    padding: 32,
+    borderWidth: 2,
+    borderColor: C2.sage,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  moodHeader: {
+    fontSize: 20, fontWeight: '800', color: C2.charcoal,
+    textAlign: 'center', marginBottom: 28,
+  },
+  emojiRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    width: '100%', marginBottom: 32,
+  },
+  emojiBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: C2.border,
+  },
+  emojiText: { fontSize: 24 },
+  skipBtn: { padding: 10 },
+  skipText: { fontSize: 13, color: C2.muted, fontWeight: '600' },
 });

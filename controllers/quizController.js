@@ -5,6 +5,7 @@ const Institute = require('../models/Institute');
 const { analyzeResponses } = require('../utils/geminiAnalysis');
 const sendNotification = require('../utils/sendEmail');
 const { sharedAssessmentTemplate } = require('../utils/emailTemplates');
+const logger = require('../utils/logger');
 
 // ─── Risk Level Scales ───
 // PHQ-9: 0-4 Minimal, 5-9 Mild, 10-14 Moderate, 15-19 Moderately Severe, 20-27 Severe
@@ -35,30 +36,23 @@ const submitQuiz = async (req, res) => {
     const userId = req.user.id;
     const { quiz_type, question_responses } = req.body;
     
+    logger.info(`[quizController.js : submitQuiz : 37] -> Received quiz data from student ID: {${userId}}`);
+
     // Validate inputs
     const allowedTypes = ['PHQ-9', 'GAD-7'];
     if (!quiz_type || !allowedTypes.includes(quiz_type)) {
-      return res.status(400).json({ 
-        error: "Bad Request", 
-        details: `quiz_type must be one of: ${allowedTypes.join(', ')}` 
-      });
-    }
-
-    if (!question_responses || !Array.isArray(question_responses) || question_responses.length === 0) {
-      return res.status(400).json({ 
-        error: "Bad Request", 
-        details: "question_responses must be a non-empty array" 
-      });
+      logger.error(`[quizController.js : submitQuiz : 42] -> Invalid quiz type: ${quiz_type}`);
+      return res.status(400).json({ error: "Bad Request" });
     }
 
     // ─── Sanitize Responses ───
     const sanitizedResponses = question_responses.map(r => ({
       ...r,
-      text: (r.text || '').trim().substring(0, 250) // Trim and cap at 250
+      text: (r.text || '').trim().substring(0, 250)
     }));
 
-    // 1. Calculate total score
     const totalScore = sanitizedResponses.reduce((sum, r) => sum + (r.score || 0), 0);
+    logger.info(`[quizController.js : submitQuiz : 53] -> Calculated Score: ${totalScore} for User: ${userId}`);
 
     // 2. Determine risk level
     const riskLevel = getRiskLevel(quiz_type, totalScore);
@@ -72,60 +66,31 @@ const submitQuiz = async (req, res) => {
       shared_with_counselor: false,
     });
 
-    // 4. Run Gemini AI sentiment analysis on text responses
-    let aiInsights = null;
-
-    try {
-      const aiData = await analyzeResponses(sanitizedResponses);
-      if (aiData) {
-        aiInsights = {
-          summary: aiData.summary,
-          riskLevel: aiData.riskLevel,
-          potentialPattern: aiData.potentialPattern,
-          score: totalScore,
-          disclaimer: aiData.disclaimer || "This is an AI-generated observation, not a medical diagnosis."
-        };
-        
-        // Update PostgreSQL if risk level changed by AI
-        if (aiData.riskLevel && aiData.riskLevel !== riskLevel) {
-          quizResult.risk_level = aiData.riskLevel;
-          await quizResult.save();
-        }
-      }
-    } catch (aiError) {
-      console.error("Gemini AI Analysis unavailable:", aiError.message);
-      
-      // EMERGENCY FALLBACK: Simulated Analysis based on Numerical Score
-      let simulatedSummary = "";
-      let simulatedPattern = "General Pattern";
-      
-      if (totalScore >= 15) {
-        simulatedSummary = `Your responses indicate a high level of distress. This score suggests significant symptoms that may interfere with daily activities. We strongly recommend reaching out to our counseling team for immediate support and a detailed professional evaluation.`;
-        simulatedPattern = quiz_type === 'PHQ-9' ? "Significant Depressive Symptoms" : "Severe Anxiety Patterns";
-      } else if (totalScore >= 10) {
-        simulatedSummary = `Your responses indicate a moderate level of distress. You may be experiencing persistent challenges that affect your wellbeing. Professional guidance can help you develop effective coping strategies to manage these symptoms early.`;
-        simulatedPattern = "Moderate Clinical Indicators";
-      } else {
-        simulatedSummary = `Your responses indicate a low or minimal level of distress at this time. This suggests you are currently maintaining a stable baseline. We encourage you to continue practicing self-care and monitoring your mood regularly.`;
-        simulatedPattern = "Stable Management";
-      }
-
-      aiInsights = {
-        summary: simulatedSummary,
-        riskLevel: riskLevel, // Uses the numerical risk level calculated at step 2
-        potentialPattern: simulatedPattern,
-        score: totalScore,
-        disclaimer: "AI Analysis is currently offline. This is a simulated observation based on your numerical score."
-      };
-    }
-
-
-    // 5. Save detailed responses & AI analysis to MongoDB
-    await AssessmentDetails.create({
+    // 4. PERSIST RAW RESPONSES IMMEDIATELY (Requirement 4)
+    logger.info(`[quizController.js : submitQuiz : 70] -> Persisting responses to AssessmentDetails store.`);
+    const details = await AssessmentDetails.create({
       quiz_result_id: quizResult.id,
       question_responses: sanitizedResponses,
-      ai_sentiment_analysis: aiInsights.summary,
+      ai_sentiment_analysis: "Processing AI analysis..."
     });
+
+    // 5. Run Gemini AI sentiment analysis (Now resilient with internal fallback)
+    logger.start(`[quizController.js : submitQuiz : 78] -> Initiating Gemini AI analysis for User: ${userId}`);
+    const aiData = await analyzeResponses(sanitizedResponses);
+    
+    const aiInsights = {
+      summary: aiData.summary,
+      riskLevel: aiData.riskLevel || riskLevel,
+      potentialPattern: aiData.potentialPattern || "General Pattern",
+      score: totalScore,
+      disclaimer: aiData.disclaimer || "Calculated from numerical score."
+    };
+    logger.success(`[quizController.js : submitQuiz : 88] -> Gemini analysis cycle complete.`);
+
+    // 6. Update the persistent store with AI summary
+    details.ai_sentiment_analysis = aiInsights.summary;
+    await details.save();
+    logger.info(`[quizController.js : submitQuiz : 93] -> Persistence store updated with AI summary.`);
 
     res.status(201).json({
       message: 'Assessment submitted successfully',

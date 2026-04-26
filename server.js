@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+const logger = require('./utils/logger');
 
 const { sequelize, connectMongoDB, connectPostgres } = require('./config/db');
 const { Institute, User, CustomFormSchema, StudentDetails, Appointment, QuizResult, AssessmentDetails, Message, MoodLog, Resource } = require('./models');
@@ -36,8 +38,6 @@ const io = new Server(server, {
   },
 });
 
-const path = require('path');
-
 // ─── Middleware ───
 app.use(cors({ 
   origin: '*', 
@@ -46,6 +46,23 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Trace Logging Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`-> ${req.method} ${req.originalUrl} [${res.statusCode}] (${duration}ms)`);
+  });
+  next();
+});
+
+// ─── Terminal Proxy for Web/Mobile ───
+app.post('/api/dev-logs', (req, res) => {
+  const { source, component, message } = req.body;
+  logger.external(source || 'WEB', component || 'App', message);
+  res.status(204).end();
+});
 
 // ─── Attach io to app so routes can emit events via req.app.get('io') ───
 app.set('io', io);
@@ -67,6 +84,7 @@ app.use('/api/resources', resourceRoutes);
 app.use('/api/meds', medicationRoutes);
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/requests', requestRoutes);
+app.use('/api/user', require('./routes/user'));
 
 // ─── Initialize Socket.io ───
 initializeSocket(io);
@@ -88,7 +106,7 @@ const startServer = async () => {
     initCronJobs(app);
 
     server.listen(PORT, '0.0.0.0', () => {
-      console.log("Server listening on all network interfaces...");
+      logger.success(`Server running on http://localhost:${PORT}`);
       console.log(`🔌 Socket.io ready for connections`);
     });
   } catch (error) {

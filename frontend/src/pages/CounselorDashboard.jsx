@@ -5,6 +5,7 @@ import { AlertCircle, User, LogOut, Building2, Search, ChevronDown, CheckCircle,
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig';
 import ChatWindow from './ChatWindow';
+import logger from '../utils/logger';
 
 const API = BASE_URL;
 
@@ -25,8 +26,30 @@ const StatusBadge = ({ status }) => {
 };
 
 // ─── Assessment Modal ───────────────────────────────────────────────────────
-const AssessmentModal = ({ assessment, onClose }) => {
+const AssessmentModal = ({ assessment, onClose, token }) => {
+  const [assignForm, setAssignForm] = useState({ title: '', url: '', type: 'Article' });
+  const [assigning, setAssigning] = useState(false);
+  const [msg, setMsg] = useState(null);
+
   if (!assessment) return null;
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    setAssigning(true);
+    setMsg(null);
+    try {
+      await axios.post(`${API}/api/resources/assign`, {
+        ...assignForm,
+        student_id: assessment.student_id
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setMsg({ type: 'success', text: 'Resource assigned!' });
+      setAssignForm({ title: '', url: '', type: 'Article' });
+    } catch (err) {
+      setMsg({ type: 'error', text: err.response?.data?.error || 'Assignment failed' });
+    } finally {
+      setAssigning(false);
+    }
+  };
   
   // The responses might be in assessment.answers or assessment.responses
   const responses = assessment.answers || assessment.responses || [];
@@ -68,7 +91,7 @@ const AssessmentModal = ({ assessment, onClose }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="bg-[#EFF4F1] p-3 rounded-xl border border-[#556B5F]/20">
                     <p className="text-[10px] font-bold text-[#556B5F] uppercase mb-1">Response</p>
-                    <p className="font-semibold text-[#2C2C2C]">{item.label || item.choice || `Score: ${item.score}`}</p>
+                    <p className="font-semibold text-[#2C2C2C]">{item.choiceLabel || item.label || item.choice || `Score: ${item.score}`}</p>
                   </div>
                   <div className="bg-[#FDFBF7] p-3 rounded-xl border border-[#E0D9CE]">
                     <p className="text-[10px] font-bold text-[#7A7A6E] uppercase mb-1">Reflections</p>
@@ -77,6 +100,55 @@ const AssessmentModal = ({ assessment, onClose }) => {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ── Assign Resource Form ── */}
+          <div className="bg-[#556B5F]/5 p-6 rounded-[2rem] border border-[#556B5F]/20">
+            <h3 className="font-bold text-[#556B5F] mb-4 flex items-center gap-2"> Prescribe Support Resource</h3>
+            <form onSubmit={handleAssign} className="space-y-4">
+               <div>
+                 <label className="block text-[10px] font-bold text-[#7A7A6E] uppercase mb-1">Resource Title</label>
+                 <input 
+                   required
+                   value={assignForm.title}
+                   onChange={e => setAssignForm({...assignForm, title: e.target.value})}
+                   className="w-full p-3 rounded-xl border border-[#E0D9CE] focus:ring-2 focus:ring-[#556B5F] outline-none text-sm"
+                   placeholder="e.g. Guided Breathing for Anxiety"
+                 />
+               </div>
+               <div className="flex gap-4">
+                 <div className="flex-1">
+                   <label className="block text-[10px] font-bold text-[#7A7A6E] uppercase mb-1">URL</label>
+                   <input 
+                     required
+                     value={assignForm.url}
+                     onChange={e => setAssignForm({...assignForm, url: e.target.value})}
+                     className="w-full p-3 rounded-xl border border-[#E0D9CE] focus:ring-2 focus:ring-[#556B5F] outline-none text-sm"
+                     placeholder="https://..."
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-[10px] font-bold text-[#7A7A6E] uppercase mb-1">Type</label>
+                   <select 
+                     value={assignForm.type}
+                     onChange={e => setAssignForm({...assignForm, type: e.target.value})}
+                     className="p-3 rounded-xl border border-[#E0D9CE] focus:ring-2 focus:ring-[#556B5F] outline-none text-sm bg-white"
+                   >
+                     <option>Article</option>
+                     <option>Video</option>
+                     <option>Blog</option>
+                   </select>
+                 </div>
+               </div>
+               <button 
+                type="submit"
+                disabled={assigning}
+                className="w-full bg-[#556B5F] text-white py-3 rounded-xl font-bold hover:bg-[#44554b] transition-all text-sm disabled:opacity-50"
+               >
+                 {assigning ? 'Assigning...' : 'Assign to Student'}
+               </button>
+               {msg && <p className={`text-center text-xs font-bold ${msg.type === 'success' ? 'text-primary' : 'text-error'}`}>{msg.text}</p>}
+            </form>
           </div>
         </div>
         
@@ -118,6 +190,7 @@ export default function CounselorDashboard() {
   // ─── Fetchers ───
   const fetchMyInstitutes = useCallback(async () => {
     if (!token) return;
+    logger.start('CounselorDashboard', 'Fetch My Institutes');
     try {
       const res = await axios.get(`${API}/api/counselor/my-institutes`, { headers: { Authorization: `Bearer ${token}` } });
       setMyInstitutes(res.data.institutes || []);
@@ -126,16 +199,23 @@ export default function CounselorDashboard() {
         setActiveInstId(active.institute.id);
         localStorage.setItem('active_institute_id', active.institute.id);
       }
-    } catch (err) { console.error('Institutes fetch failed', err); }
+      logger.success('CounselorDashboard', 'Fetch My Institutes');
+    } catch (err) { 
+      logger.error('CounselorDashboard', 'Fetch My Institutes', err);
+    }
   }, [token]);
 
   const fetchRequests = useCallback(async () => {
     if (!token) return;
+    logger.start('CounselorDashboard', 'Fetch Counseling Requests');
     setRequestsLoading(true);
     try {
       const res = await axios.get(`${API}/api/requests/my-requests`, { headers: { Authorization: `Bearer ${token}` } });
       setRequests(res.data.requests || []);
-    } catch (err) { console.error('Requests fetch failed', err); }
+      logger.success('CounselorDashboard', 'Fetch Counseling Requests');
+    } catch (err) { 
+      logger.error('CounselorDashboard', 'Fetch Counseling Requests', err);
+    }
     finally { setRequestsLoading(false); }
   }, [token]);
 
@@ -153,12 +233,17 @@ export default function CounselorDashboard() {
   }, [token]);
 
   const respondToRequest = async (id, action) => {
+    logger.start('CounselorDashboard', `Respond to Request: ${id} (${action})`);
     setRespondingId(id);
     try {
       const res = await axios.patch(`${API}/api/requests/${id}/respond`, { action }, { headers: { Authorization: `Bearer ${token}` } });
       const apptId = res.data?.appointment_id;
       setRequests(prev => prev.map(r => r.id === id ? { ...r, status: action, appointment_id: apptId || r.appointment_id } : r));
-    } catch (err) { alert(err.response?.data?.error || 'Action failed'); }
+      logger.success('CounselorDashboard', `Respond to Request: ${id}`);
+    } catch (err) { 
+      logger.error('CounselorDashboard', `Respond to Request: ${id}`, err);
+      alert(err.response?.data?.error || 'Action failed'); 
+    }
     finally { setRespondingId(null); }
   };
 
@@ -188,7 +273,8 @@ export default function CounselorDashboard() {
     // Otherwise, you might need an API call here. 
     // For now, mapping from req based on the user's description.
     setSelectedAssessment({
-      studentName: req.student.name,
+      student_id: req.student_id || req.student?.id,
+      studentName: req.student?.name || 'Student',
       score: req.score,
       riskLevel: req.risk_level,
       answers: req.responses || req.quiz_result?.answers || []
@@ -351,7 +437,7 @@ export default function CounselorDashboard() {
         </div>
       </div>
 
-      <AssessmentModal assessment={selectedAssessment} onClose={() => setSelectedAssessment(null)} />
+      <AssessmentModal assessment={selectedAssessment} onClose={() => setSelectedAssessment(null)} token={token} />
       
       {activeChat && (
         <ChatWindow

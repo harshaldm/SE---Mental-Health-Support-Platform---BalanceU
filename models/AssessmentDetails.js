@@ -10,7 +10,8 @@ const assessmentDetailsSchema = new mongoose.Schema({
     {
       question: { type: String, required: true },
       score: { type: Number, required: true },
-      text: { type: String, default: '' }, // Optional free-text response
+      choiceLabel: { type: String, default: 'N/A' },
+      text: { type: String, default: '' }, // Student reflection
     },
   ],
   ai_sentiment_analysis: {

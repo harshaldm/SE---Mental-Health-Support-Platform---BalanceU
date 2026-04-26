@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
-  ActivityIndicator, Modal, ScrollView, Alert, StyleSheet as RN,
+  ActivityIndicator, Modal, ScrollView, Alert,
 } from 'react-native';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig';
 import { designTokens } from '../globalStyles';
 import ChatScreen from './ChatScreen';
+import logger from '../utils/logger';
 
 const C = designTokens.colors;
 const R = designTokens.radius;
@@ -130,6 +131,7 @@ function CounselorPanel({ token, user, latestAssessment, currentUserId, onOpenCh
 
   const sendRequest = async () => {
     if (!selected) return;
+    logger.start('SupportHub', `Submit Counseling Request to ${selected.name}`);
     setSubmitting(true);
     try {
       await axios.post(
@@ -142,12 +144,14 @@ function CounselorPanel({ token, user, latestAssessment, currentUserId, onOpenCh
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      logger.success('SupportHub', `Submit Counseling Request to ${selected.name}`);
       setSelected(null);
       Alert.alert(
         '✅ Request Sent',
         `${selected.name} has been notified by email and will respond shortly.`
       );
     } catch (err) {
+      logger.error('SupportHub', `Submit Counseling Request to ${selected.name}`, err);
       Alert.alert('Error', err.response?.data?.error || 'Failed to send request.');
     } finally {
       setSubmitting(false);

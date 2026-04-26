@@ -47,6 +47,7 @@ const registerAdmin = async (req, res) => {
       email,
       password_hash,
       role: assignedRole,
+      full_name: institute_name, // Admins identified by institute name globally
       institute_id: generatedInstituteId,
     });
 
@@ -91,6 +92,7 @@ const registerStudent = async (req, res) => {
       email,
       password_hash,
       role: 'Student',
+      full_name,
       institute_id,
       profile_metadata: {
         full_name,
@@ -150,7 +152,13 @@ const login = async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: { id: user.id, email: user.email, role: user.role, institute_id: user.institute_id },
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        full_name: user.full_name,
+        institute_id: user.institute_id 
+      },
     });
   } catch (error) {
     console.error("Login Error:", error.message);
@@ -163,7 +171,8 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'email', 'role', 'institute_id', 'createdAt'],
+      attributes: ['id', 'email', 'role', 'full_name', 'institute_id', 'createdAt', 'profile_metadata'],
+      include: [{ model: Institute, attributes: ['name'] }]
     });
 
     if (!user) {

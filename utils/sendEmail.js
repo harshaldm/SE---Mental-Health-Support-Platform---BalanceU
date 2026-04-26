@@ -1,11 +1,11 @@
 const nodemailer = require('nodemailer');
+const logger = require('./logger');
 
 // ─── Nodemailer Transporter ───
-// Uses environment variables for SMTP configuration
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-  secure: parseInt(process.env.EMAIL_PORT, 10) === 465, // true for 465, false for other ports
+  secure: parseInt(process.env.EMAIL_PORT, 10) === 465,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -14,11 +14,9 @@ const transporter = nodemailer.createTransport({
 
 /**
  * Send an email notification.
- * @param {string} to       - Recipient email address
- * @param {string} subject  - Email subject line
- * @param {string} htmlContent - HTML body of the email
  */
 const sendNotification = async (to, subject, htmlContent) => {
+  logger.start(`[sendNotification] -> Preparing email for {${to}}...`);
   try {
     const info = await transporter.sendMail({
       from: `"BalanceU" <${process.env.EMAIL_USER}>`,
@@ -26,11 +24,10 @@ const sendNotification = async (to, subject, htmlContent) => {
       subject,
       html: htmlContent,
     });
-    console.log(`📧 Email sent to ${to}: ${info.messageId}`);
+    logger.success(`[sendNotification] -> Email delivered to {${to}}. ID: ${info.messageId}`);
     return info;
   } catch (error) {
-    // Log but don't crash the app — email is non-blocking
-    console.error(`❌ Failed to send email to ${to}:`, error.message);
+    logger.error(`[sendNotification] -> Dispatch failed for {${to}}`, error);
     return null;
   }
 };

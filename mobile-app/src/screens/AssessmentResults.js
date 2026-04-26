@@ -31,8 +31,9 @@ export default function AssessmentResults({
 }) {
   const [showChoiceModal, setShowChoiceModal] = useState(false);
 
-  // Robust fallbacks
-  const summary          = aiInsights?.summary          || 'Analysis data missing. Please contact support.';
+  // Robust fallbacks & Safety Guards
+  const displaySummary   = aiInsights?.summary          || "Analysis is being processed by a counselor.";
+  const summary          = displaySummary; 
   const riskLevel        = aiInsights?.riskLevel        || 'Low';
   const potentialPattern = aiInsights?.potentialPattern || 'Standard Profile';
   const score            = aiInsights?.score            ?? 0;
@@ -50,7 +51,14 @@ export default function AssessmentResults({
   // Handler: user picks "Resources" from the modal
   const handleResourceChoice = () => {
     setShowChoiceModal(false);
-    onGoToResources?.();
+    
+    // logic update: check if pattern is pending, null, or undefined
+    const rawPattern = aiInsights?.potentialPattern;
+    const queryValue = (rawPattern === "Assessment Pending" || !rawPattern) ? "" : rawPattern;
+
+    console.log(`[AssessmentResults.js : handleResourceNavigation : 60] -> Navigating to ResourceTab with query: "${queryValue}"`);
+    
+    onGoToResources?.(queryValue);
   };
 
   return (
@@ -82,8 +90,16 @@ export default function AssessmentResults({
           </View>
 
           {/* ── AI Summary ── */}
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryText}>{summary}</Text>
+          <View style={[
+            styles.summaryBox,
+            summary.includes('Offline') && { backgroundColor: '#F1F1F1', borderColor: '#D1D1D1' }
+          ]}>
+            <Text style={[
+              styles.summaryText,
+              summary.includes('Offline') && { color: '#555555', fontStyle: 'italic' }
+            ]}>
+              {summary}
+            </Text>
           </View>
 
           {/* ── Disclaimer ── */}

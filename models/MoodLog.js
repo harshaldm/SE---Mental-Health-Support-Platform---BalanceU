@@ -1,30 +1,47 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const User = require('./User');
 
-const moodLogSchema = new mongoose.Schema({
+const MoodLog = sequelize.define('MoodLog', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
   user_id: {
-    type: Number, // References the PostgreSQL User.id
-    required: true,
-    index: true,
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id',
+    },
   },
   mood_score: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 5,
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    validate: {
+      min: 1,
+      max: 5,
+    },
   },
-  note: {
-    type: String,
-    default: '',
-  },
-  date: {
-    type: Date,
-    default: Date.now,
+  log_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
   },
 }, {
-  collection: 'mood_logs',
+  tableName: 'mood_logs',
   timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: false,
+  indexes: [
+    {
+      unique: true,
+      fields: ['user_id', 'log_date'],
+    }
+  ]
 });
 
-const MoodLog = mongoose.model('MoodLog', moodLogSchema);
+User.hasMany(MoodLog, { foreignKey: 'user_id' });
+MoodLog.belongsTo(User, { foreignKey: 'user_id' });
 
 module.exports = MoodLog;

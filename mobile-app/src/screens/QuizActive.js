@@ -75,11 +75,16 @@ export default function QuizActive({ quizType, onComplete, onCancel, token: prop
 
       const payload = {
         quiz_type: quizType,
-        question_responses: questions.map((q, i) => ({
-          question: q,
-          score: answers[i] !== undefined ? answers[i] : 0,
-          text: reflections[i] || ''
-        }))
+        question_responses: questions.map((q, i) => {
+          const score = answers[i] !== undefined ? answers[i] : 0;
+          const choiceObj = OPTIONS.find(opt => opt.value === score);
+          return {
+            question: q,
+            score: score,
+            choiceLabel: choiceObj ? choiceObj.label : 'N/A',
+            text: reflections[i] || ''
+          };
+        })
       };
 
       const fullUrl = `${API_URL}/api/quiz/submit`;

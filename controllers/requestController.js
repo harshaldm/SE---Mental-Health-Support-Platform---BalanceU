@@ -1,6 +1,7 @@
 const { CounselingRequest, User, CounselorInstitute, Institute, Appointment } = require('../models');
 const sendNotification = require('../utils/sendEmail');
 const { supportRequestTemplate, requestResponseTemplate } = require('../utils/emailTemplates');
+const logger = require('../utils/logger');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/institutes/:id/counselors
@@ -169,15 +170,19 @@ const respondToRequest = async (req, res) => {
     return res.status(400).json({ error: "action must be 'accepted' or 'rejected'." });
   }
 
+  logger.start(`Updating request ${id} to ${action}...`);
+
   try {
     const request = await CounselingRequest.findOne({
       where: { id, counselor_id },
     });
 
     if (!request) {
+      logger.error(`Request ${id} not found.`);
       return res.status(404).json({ error: 'Request not found or not yours to respond to.' });
     }
     if (request.status !== 'pending') {
+      logger.error(`Request ${id} already processed.`);
       return res.status(409).json({ error: 'This request has already been responded to.' });
     }
 
@@ -186,6 +191,7 @@ const respondToRequest = async (req, res) => {
     // ── If accepted, auto-create an Appointment (chat room) ──
     let appointmentId = null;
     if (action === 'accepted') {
+      logger.info(`Auto-creating appointment for request ${id}...`);
       try {
         const appt = await Appointment.create({
           student_id:        request.student_id,
