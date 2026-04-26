@@ -1,35 +1,48 @@
 const Prescription = require('../models/Prescription');
 const MedicationLog = require('../models/MedicationLog');
 const User = require('../models/User');
+const CounselorInstitute = require('../models/CounselorInstitute');
 
 // ─── Prescribe Medication (Counselor) ───
 // POST /api/meds/prescribe
 const prescribeMedication = async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const instituteId = req.user.institute_id;
-    const { student_id, med_name, start_date, end_date, frequency, slots } = req.body;
+    const activeInstituteId = req.headers['x-active-institute'];
+    const { student_id, med_name, dosage, start_date, end_date, frequency, slots } = req.body;
 
-    if (!student_id || !med_name || !start_date || !end_date || !frequency || !slots) {
-      return res.status(400).json({ error: 'All fields are required: student_id, med_name, start_date, end_date, frequency, slots' });
+    console.log(`[counselorController.js] -> Prescription Attempt: Counselor ${counselorId}, Student ${student_id}, Institute ${activeInstituteId}.`);
+
+    if (!activeInstituteId) {
+      return res.status(400).json({ error: 'Active institute context is missing.' });
     }
 
-    if (!Array.isArray(slots) || slots.length === 0) {
-      return res.status(400).json({ error: 'slots must be a non-empty array (e.g., ["Morning", "Night"])' });
+    if (!student_id || !med_name || !dosage || !start_date || !end_date || !frequency || !slots) {
+      return res.status(400).json({ error: 'All fields are required: student_id, med_name, dosage, start_date, end_date, frequency, slots' });
     }
 
-    if (slots.length !== frequency) {
-      return res.status(400).json({ error: `frequency (${frequency}) must match the number of slots (${slots.length})` });
+    // 1. Verify Counselor is active at this institute
+    const counselorAuth = await CounselorInstitute.findOne({
+      where: { counselor_id: counselorId, institute_id: activeInstituteId, status: 'active' }
+    });
+
+    if (!counselorAuth) {
+      console.error(`[counselorController.js] -> Validation Failed: Reason [Counselor not active at institute ${activeInstituteId}].`);
+      return res.status(403).json({ error: 'You do not have active permission to prescribe at this institute.' });
     }
 
-    // Verify the student exists and is at the same institute
+    // 2. Verify Student exists at this specific institute
     const student = await User.findOne({
-      where: { id: student_id, role: 'Student', institute_id: instituteId },
+      where: { id: student_id, role: 'Student', institute_id: activeInstituteId },
     });
 
     if (!student) {
+      console.error(`[counselorController.js] -> Validation Failed: Reason [Mismatched Institute / Student ${student_id} not found at ${activeInstituteId}].`);
       return res.status(404).json({ error: 'Student not found at your institute' });
     }
+
+    // Use resolved instituteId for database storage
+    const instituteId = activeInstituteId;
 
     // Create the prescription
     const prescription = await Prescription.create({
@@ -37,6 +50,7 @@ const prescribeMedication = async (req, res) => {
       counselor_id: counselorId,
       institute_id: instituteId,
       med_name,
+      dosage,
       start_date: new Date(start_date),
       end_date: new Date(end_date),
       frequency,

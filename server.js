@@ -45,7 +45,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Active-Institute'] 
 }));
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+  console.log(`[server.js] -> Serving static files from /uploads.`);
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Trace Logging Middleware
 app.use((req, res, next) => {
@@ -85,6 +88,7 @@ app.use('/api/meds', medicationRoutes);
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/requests', requestRoutes);
 app.use('/api/user', require('./routes/user'));
+app.use('/api/student', require('./routes/student'));
 
 // ─── Initialize Socket.io ───
 initializeSocket(io);

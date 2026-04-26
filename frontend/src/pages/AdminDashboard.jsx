@@ -2,7 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig';
-import { Users, Shield, ClipboardList, LogOut, CheckCircle, XCircle, Plus, Trash2, ChevronRight, LayoutGrid } from 'lucide-react';
+import { 
+  Users, Shield, ClipboardList, LogOut, CheckCircle, XCircle, Plus, Trash2, 
+  ChevronRight, LayoutGrid, X, Heart, Briefcase
+} from 'lucide-react';
+import AdminStudents from './AdminStudents';
+import AdminCounselors from './AdminCounselors';
+import AdminProfile from './AdminProfile';
+import { User as UserIcon } from 'lucide-react';
 
 // ─── Sanctuary palette ──────────────────────────────────────────────────────────
 const S = {
@@ -22,21 +29,18 @@ const S = {
 // ─── Sidebar nav items ────────────────────────────────────────────────────────
 const NAV = [
   { key: 'overview',     label: 'Overview',      Icon: LayoutGrid },
-  { key: 'applications', label: 'Counselors',    Icon: Users },
-  { key: 'schema',       label: 'Registration',  Icon: ClipboardList },
+  { key: 'students',     label: 'Students',      Icon: Users },
+  { key: 'applications', label: 'Counselors',    Icon: Briefcase },
 ];
 
 export default function AdminDashboard() {
   const { user, token, logout } = useAuth();
   const [activeNav, setActiveNav]           = useState('overview');
-  const [fields, setFields]   = useState([]);
-  const [label, setLabel]     = useState('');
-  const [type, setType]       = useState('Text');
-  const [options, setOptions] = useState('');
+
   const [applications, setApplications]     = useState([]);
   const [appsLoading, setAppsLoading]       = useState(false);
   const [actioningId, setActioningId]       = useState(null);
-  const [stats, setStats] = useState({ students: 0, counselors: 0, pending: 0 });
+  const [stats, setStats] = useState({ students: null, counselors: null, pending: 0, averageMood: null, currentDate: '' });
 
   const fetchApplications = useCallback(async () => {
     if (!token) return;
@@ -52,19 +56,38 @@ export default function AdminDashboard() {
     finally { setAppsLoading(false); }
   }, [token]);
 
-  const fetchSchema = useCallback(async () => {
+  const fetchStats = useCallback(async () => {
     if (!token || !user?.institute_id) return;
     try {
-      const res = await axios.get(`${BASE_URL}/api/institutes/${user.institute_id}/form-schema`, {
+      console.log(`[AdminDashboard.jsx : fetchData] -> Fetching counts for ${user.institute?.name || 'Institute'}.`);
+      const res = await axios.get(`${BASE_URL}/api/admin/dashboard-stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.data.schema) setFields(res.data.schema);
+      if (res.data.stats) {
+        setStats(s => ({
+          ...s,
+          students: res.data.stats.studentCount,
+          counselors: res.data.stats.counselorCount,
+          averageMood: res.data.stats.averageMood,
+          currentDate: res.data.stats.currentDate
+        }));
+      }
     } catch (e) { console.error(e); }
   }, [token, user]);
 
   useEffect(() => {
-    if (user?.institute_id) { fetchApplications(); fetchSchema(); }
-  }, [fetchApplications, fetchSchema, user]);
+    if (user?.institute_id) { 
+      fetchApplications(); 
+      fetchStats(); 
+
+      // Poll every 60 seconds
+      const pollInterval = setInterval(() => {
+        fetchStats();
+      }, 60000);
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [fetchApplications, fetchStats, user]);
 
   const handleApplicationAction = async (applicationId, action) => {
     setActioningId(applicationId);
@@ -83,6 +106,14 @@ export default function AdminDashboard() {
     } catch (err) { alert('Save failed'); }
   };
 
+
+  // DEBUG & HEADER LOGIC
+  const displayName = user?.institute_name || localStorage.getItem('institute_name') || user?.full_name || "Admin";
+  console.log("DEBUG: Current User Object ->", user);
+  console.log("[AdminDashboard.jsx] -> Header state:", user ? 'Data Found' : 'Waiting for Auth');
+  console.log("[AdminDashboard.jsx] -> UI Sync: Icon mapping updated for Counselors (Briefcase) and Students (Users).");
+  console.log("[AdminDashboard.jsx] -> Icon color corrected to Sage Green (#556B5F) for visual consistency.");
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: S.cream, color: S.charcoal }}>
 
@@ -93,7 +124,7 @@ export default function AdminDashboard() {
             <div className="w-8 h-8 rounded-lg bg-[#556B5F] flex items-center justify-center text-white font-black text-lg">B</div>
             <h2 className="font-black text-xl tracking-tight">Balance<span className="text-[#556B5F]">U</span></h2>
           </div>
-          <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em]">{user?.institute?.name || 'ADMIN PORTAL'}</p>
+          <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em]">{displayName}</p>
         </div>
 
         <nav className="flex-1 space-y-2">
@@ -125,6 +156,17 @@ export default function AdminDashboard() {
                <p className="text-[10px] font-bold text-success uppercase">Active Session</p>
             </div>
           </div>
+          <button 
+            onClick={() => {
+              console.log(`[AdminDashboard.jsx] -> Rendering Profile. Sidebar updated.`);
+              setActiveNav('profile');
+            }}
+            className={`w-full flex items-center gap-3 px-5 py-3 mb-2 rounded-[1.25rem] font-black text-xs transition-all ${
+              activeNav === 'profile' ? 'bg-[#556B5F] text-white shadow-lg shadow-[#556B5F]/20' : 'text-[#7A7A6E] hover:bg-[#EFF4F1] hover:text-[#556B5F]'
+            }`}
+          >
+            <UserIcon size={16} /> MY PROFILE
+          </button>
           <button onClick={logout} className="w-full flex items-center gap-3 px-5 py-3 rounded-[1.25rem] text-error font-black text-xs hover:bg-error/5 transition-all">
             <LogOut size={16} /> SIGN OUT
           </button>
@@ -137,21 +179,27 @@ export default function AdminDashboard() {
         {activeNav === 'overview' && (
           <div className="max-w-5xl">
             <header className="mb-12">
-               <h1 className="text-4xl font-black mb-2">Welcome Back, Admin</h1>
+               {user ? <h1 className="text-4xl font-black mb-2">Welcome Back, {displayName}</h1> : <h1 className="text-4xl font-black mb-2">Loading...</h1>}
                <p className="text-[#7A7A6E] text-base font-medium">Here's what's happening across your institute today.</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
               {[
-                { label: 'Pending Apps', val: stats.pending, icon: <Users className="text-warning" />, desc: 'Awaiting review' },
-                { label: 'Form Fields', val: fields.length, icon: <ClipboardList className="text-sage" />, desc: 'Custom schema' },
-                { label: 'Total Students', val: '—', icon: <Shield className="text-[#7A7A6E]" />, desc: 'Registered' },
+                { label: 'Total Counselors', val: stats.counselors !== null ? stats.counselors : '...', icon: <Briefcase className="text-[#556B5F]" />, desc: 'Clinical Hires' },
+                { label: 'Average Mood', val: stats.averageMood !== null ? `${stats.averageMood} / 5` : '...', icon: <Heart className="text-[#556B5F]" />, desc: `Today, ${stats.currentDate || '...'}` },
+                { label: 'Registered Students', val: stats.students !== null ? stats.students : '...', icon: <Users className="text-[#7A7A6E]" />, desc: 'Enrolled' },
               ].map((s, i) => (
                 <div key={i} className="bg-white p-8 rounded-[2.5rem] border shadow-sm hover:shadow-md transition-all group" style={{ borderColor: S.border }}>
-                   <div className="w-12 h-12 rounded-2xl bg-[#FDFBF7] border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ borderColor: S.border }}>
+                   <div className="w-12 h-12 rounded-2xl bg-[#EFF4F1] border flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ borderColor: S.border }}>
                       {s.icon}
                    </div>
-                   <p className="text-4xl font-black mb-1">{s.val}</p>
+                   <p className="text-4xl font-black mb-1">
+                     {s.val === '...' ? (
+                       <span className="inline-block w-8 h-8 rounded-full border-4 border-[#EFF4F1] border-t-[#556B5F] animate-spin" />
+                     ) : (
+                       s.val
+                     )}
+                   </p>
                    <p className="text-sm font-bold opacity-60 uppercase tracking-wider">{s.label}</p>
                    <p className="text-[10px] text-[#7A7A6E] font-medium mt-4">{s.desc}</p>
                 </div>
@@ -172,107 +220,18 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeNav === 'applications' && (
-           <div className="max-w-5xl">
-              <h1 className="text-3xl font-black mb-8">Counselor Applications</h1>
-              {applications.length === 0 ? (
-                <div className="bg-white rounded-[2.5rem] p-20 text-center border-2 border-dashed" style={{ borderColor: S.border }}>
-                   <div className="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle size={40} />
-                   </div>
-                   <h3 className="text-xl font-bold mb-2">You're all caught up!</h3>
-                   <p className="text-[#7A7A6E]">No pending counselor registration requests found.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   {applications.map(app => (
-                     <div key={app.application_id} className="bg-white p-8 rounded-[2.5rem] border shadow-sm hover:border-[#556B5F] transition-all" style={{ borderColor: S.border }}>
-                        <div className="flex items-center gap-4 mb-8">
-                           <div className="w-14 h-14 rounded-2xl bg-[#EFF4F1] flex items-center justify-center text-xl font-black text-[#556B5F]">
-                             {(app.counselor?.full_name || 'C')[0]}
-                           </div>
-                           <div>
-                              <p className="font-black text-lg">{app.counselor?.full_name || 'New Counselor'}</p>
-                              <p className="text-xs font-bold text-[#7A7A6E]">{app.counselor?.email}</p>
-                           </div>
-                        </div>
-                        <div className="flex gap-3">
-                           <button onClick={() => handleApplicationAction(app.application_id, 'active')} disabled={actioningId === app.application_id} className="flex-1 bg-[#556B5F] text-white py-3.5 rounded-full font-black text-sm shadow-lg hover:bg-[#44554b] transition-all">
-                             Approve
-                           </button>
-                           <button onClick={() => handleApplicationAction(app.application_id, 'rejected')} disabled={actioningId === app.application_id} className="flex-1 bg-white border-2 border-error text-error py-3.5 rounded-full font-black text-sm hover:bg-error/5 transition-all">
-                             Reject
-                           </button>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-              )}
-           </div>
+
+
+        {activeNav === 'students' && (
+          <AdminStudents />
         )}
 
-        {activeNav === 'schema' && (
-          <div className="max-w-6xl">
-             <h1 className="text-3xl font-black mb-2">Registration Form Builder</h1>
-             <p className="text-[#7A7A6E] mb-10 font-medium font-sm">Customize the fields students see when they register for your institute.</p>
-             
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
-                <div className="bg-white p-10 rounded-[3rem] border shadow-sm" style={{ borderColor: S.border }}>
-                   <h3 className="text-xl font-black mb-8 border-b pb-4">Add Custom Field</h3>
-                   <div className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-black uppercase text-[#7A7A6E] tracking-widest block mb-2">Field Label</label>
-                        <input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. University ID Number" className="w-full bg-[#FDFBF7] border p-4 rounded-2xl text-sm outline-none focus:ring-2 ring-[#556B5F]" style={{ borderColor: S.border }} />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase text-[#7A7A6E] tracking-widest block mb-2">Input Type</label>
-                        <select value={type} onChange={e => setType(e.target.value)} className="w-full bg-[#FDFBF7] border p-4 rounded-2xl text-sm outline-none" style={{ borderColor: S.border }}>
-                           {['Text','Number','Phone','Date','Dropdown'].map(t => <option key={t}>{t}</option>)}
-                        </select>
-                      </div>
-                      <button onClick={() => { if(!label) return; setFields([...fields, { label, type, required: true }]); setLabel(''); }} className="w-full bg-[#556B5F] text-white py-4 rounded-full font-black shadow-xl hover:scale-[1.02] active:scale-95 transition-transform">
-                        Add to Form
-                      </button>
-                   </div>
+        {activeNav === 'applications' && (
+          <AdminCounselors token={token} user={user} />
+        )}
 
-                   {fields.length > 0 && (
-                     <div className="mt-12 space-y-3">
-                        <h4 className="font-black text-xs uppercase opacity-30 tracking-[0.3em] mb-4">Active Fields</h4>
-                        {fields.map((f, i) => (
-                          <div key={i} className="bg-[#FDFBF7] p-4 rounded-2xl border flex justify-between items-center group" style={{ borderColor: S.border }}>
-                             <span className="font-bold text-sm">{f.label} <span className="opacity-40 italic ml-1">({f.type})</span></span>
-                             <button onClick={() => setFields(fields.filter((_, idx)=>idx!==i))} className="p-2 text-error opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
-                          </div>
-                        ))}
-                        <button onClick={saveSchema} className="w-full bg-white border-2 border-[#556B5F] text-[#556B5F] py-4 rounded-full font-black mt-8 hover:bg-[#556B5F] hover:text-white transition-all shadow-md">
-                          Publish Registration Schema
-                        </button>
-                     </div>
-                   )}
-                </div>
-
-                <div className="bg-[#EFF4F1] p-10 rounded-[3rem] border border-[#556B5F]/20 relative">
-                   <div className="absolute top-8 right-8 bg-[#556B5F] text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg">Live Preview</div>
-                   <h3 className="text-xl font-black mb-8 border-b border-[#556B5F]/10 pb-4 text-[#556B5F]">Student Experience</h3>
-                   
-                   <div className="space-y-6">
-                      <div className="opacity-40 pointer-events-none space-y-6">
-                         <div><label className="text-[10px] font-black uppercase text-[#556B5F] tracking-widest block mb-2">FullName</label><div className="bg-white h-12 rounded-xl border border-[#556B5F]/10" /></div>
-                         <div><label className="text-[10px] font-black uppercase text-[#556B5F] tracking-widest block mb-2">University Email</label><div className="bg-white h-12 rounded-xl border border-[#556B5F]/10" /></div>
-                      </div>
-                      
-                      {fields.map((f, i) => (
-                        <div key={i}>
-                           <label className="text-[10px] font-black uppercase text-[#556B5F] tracking-widest block mb-2">{f.label}</label>
-                           <div className="bg-white h-12 rounded-2xl border-2 border-[#556B5F]/20 flex items-center px-4 italic text-xs text-[#7A7A6E]">
-                              Placeholder for {f.type} input...
-                           </div>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-             </div>
-          </div>
+        {activeNav === 'profile' && (
+          <AdminProfile />
         )}
       </main>
     </div>

@@ -115,10 +115,17 @@ const submitRequest = async (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const getMyRequests = async (req, res) => {
   const counselor_id = req.user.id;
+  const activeInstituteId = req.headers['x-active-institute'];
+
+  if (!activeInstituteId) {
+    return res.status(400).json({ error: 'No active institute selected. Please select an institute.' });
+  }
+
+  console.log(`[requestController.js] -> Scoping data to Active Vector: ${activeInstituteId}.`);
 
   try {
     const requests = await CounselingRequest.findAll({
-      where: { counselor_id },
+      where: { counselor_id, institute_id: activeInstituteId, status: 'pending' },
       order: [['createdAt', 'DESC']],
       include: [
         {
@@ -133,6 +140,8 @@ const getMyRequests = async (req, res) => {
         },
       ],
     });
+
+    console.log(`[counselorController.js] -> Queue filtered for Pending requests only. Total: ${requests.length}.`);
 
     const formatted = requests.map(r => ({
       id:            r.id,
@@ -187,6 +196,10 @@ const respondToRequest = async (req, res) => {
     }
 
     await request.update({ status: action });
+
+    if (action === 'accepted') {
+      console.log(`[counselorController.js] -> Support Request ${id} accepted. Student ${request.student_id} added to caseload.`);
+    }
 
     // ── If accepted, auto-create an Appointment (chat room) ──
     let appointmentId = null;

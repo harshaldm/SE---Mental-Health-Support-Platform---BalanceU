@@ -18,6 +18,10 @@ const prescriptionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  dosage: {
+    type: String,
+    required: true,
+  },
   start_date: {
     type: Date,
     required: true,

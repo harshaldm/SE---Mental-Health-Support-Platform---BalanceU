@@ -11,22 +11,10 @@ const logger = require('../utils/logger');
 // PHQ-9: 0-4 Minimal, 5-9 Mild, 10-14 Moderate, 15-19 Moderately Severe, 20-27 Severe
 // GAD-7: 0-4 Minimal, 5-9 Mild, 10-14 Moderate, 15-21 Severe
 const getRiskLevel = (quizType, totalScore) => {
-  if (quizType === 'PHQ-9') {
-    if (totalScore <= 4) return 'Minimal';
-    if (totalScore <= 9) return 'Mild';
-    if (totalScore <= 14) return 'Moderate';
-    if (totalScore <= 19) return 'Moderately Severe';
-    return 'Severe';
-  }
-
-  if (quizType === 'GAD-7') {
-    if (totalScore <= 4) return 'Minimal';
-    if (totalScore <= 9) return 'Mild';
-    if (totalScore <= 14) return 'Moderate';
-    return 'Severe';
-  }
-
-  return 'Unknown';
+  // Thresholds: 0-9: Low, 10-18: Moderate, 19-27: Severe.
+  if (totalScore <= 9) return 'Low';
+  if (totalScore <= 18) return 'Moderate';
+  return 'Severe';
 };
 
 // ─── Submit Quiz ───
@@ -92,13 +80,20 @@ const submitQuiz = async (req, res) => {
     await details.save();
     logger.info(`[quizController.js : submitQuiz : 93] -> Persistence store updated with AI summary.`);
 
+    // 7. ENFORCE GEMINI PRECEDENCE: Update the risk_level in PostgreSQL if AI provided one
+    if (aiInsights.riskLevel && aiInsights.riskLevel !== 'Unknown') {
+       quizResult.risk_level = aiInsights.riskLevel;
+       await quizResult.save();
+       logger.info(`[quizController.js : submitQuiz] -> Risk level updated to Gemini result: ${aiInsights.riskLevel}`);
+    }
+
     res.status(201).json({
       message: 'Assessment submitted successfully',
       result: {
         id: quizResult.id,
         quiz_type: quiz_type,
         total_score: totalScore,
-        risk_level: aiInsights.riskLevel,
+        risk_level: quizResult.risk_level, // Use the potentially updated level
       },
       aiInsights: aiInsights
     });

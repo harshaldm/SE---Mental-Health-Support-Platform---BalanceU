@@ -12,8 +12,12 @@ const { searchResources } = require('../utils/geminiService');
 router.post('/', authMiddleware, authorizeRole(['Counselor']), async (req, res) => {
   try {
     const counselorId = req.user.id;
-    const instituteId = req.user.institute_id;
+    const instituteId = req.headers['x-active-institute'] || req.user.institute_id;
     const { title, category, content_type, url, description } = req.body;
+
+    if (!instituteId) {
+      return res.status(400).json({ error: 'Active institute context is missing.' });
+    }
 
     if (!title || !category || !content_type) {
       return res.status(400).json({ error: 'title, category, and content_type are required' });
@@ -50,12 +54,16 @@ router.post('/', authMiddleware, authorizeRole(['Counselor']), async (req, res) 
 });
 
 // ─── GET /api/resources ───
-// Students fetch resources from counselors at their own institute
+// Students/Counselors fetch resources from counselors at the active institute
 // Supports optional ?category= query filter
 router.get('/', authMiddleware, authorizeRole(['Student', 'Counselor']), async (req, res) => {
   try {
-    const instituteId = req.user.institute_id;
+    const instituteId = req.headers['x-active-institute'] || req.user.institute_id;
     const { category } = req.query;
+
+    if (!instituteId) {
+      return res.status(400).json({ error: 'Institute context is missing.' });
+    }
 
     const filter = { institute_id: instituteId };
     if (category && category.trim()) {

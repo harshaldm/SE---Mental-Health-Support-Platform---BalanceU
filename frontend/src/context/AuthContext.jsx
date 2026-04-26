@@ -8,6 +8,8 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
+  const [activeInstId, setActiveInstId] = useState(() => localStorage.getItem('active_institute_id') || null);
+  const [activeInstName, setActiveInstName] = useState(() => localStorage.getItem('active_institute_name') || null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -21,9 +23,15 @@ export const AuthProvider = ({ children }) => {
             });
             setUser(response.data.user);
             setToken(storedToken);
+            if (response.data.user.institute_name) {
+              localStorage.setItem('institute_name', response.data.user.institute_name);
+            }
         } catch (error) {
             console.error('Auth check failed:', error);
             localStorage.removeItem('token');
+            localStorage.removeItem('active_institute_id');
+            localStorage.removeItem('active_institute_name');
+            localStorage.removeItem('institute_name');
             setToken(null);
         }
       }
@@ -38,6 +46,9 @@ export const AuthProvider = ({ children }) => {
     const { token: newToken, user: userData } = response.data;
     
     localStorage.setItem('token', newToken);
+    if (userData.institute_name) {
+      localStorage.setItem('institute_name', userData.institute_name);
+    }
     setToken(newToken);
     setUser(userData);
     
@@ -54,13 +65,17 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('active_institute_id');
+    localStorage.removeItem('active_institute_name');
+    localStorage.removeItem('institute_name');
     setToken(null);
     setUser(null);
+    setActiveInstId(null);
+    setActiveInstName(null);
     navigate('/');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, activeInstId, setActiveInstId, activeInstName, setActiveInstName, loading, login, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

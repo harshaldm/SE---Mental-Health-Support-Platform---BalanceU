@@ -48,6 +48,9 @@ const CounselorInstitute = sequelize.define('CounselorInstitute', {
 const User = require('./User');
 const Institute = require('./Institute');
 
+User.belongsToMany(Institute, { through: CounselorInstitute, foreignKey: 'counselor_id', as: 'institutes' });
+Institute.belongsToMany(User, { through: CounselorInstitute, foreignKey: 'institute_id', as: 'counselors' });
+
 User.hasMany(CounselorInstitute, { foreignKey: 'counselor_id', onDelete: 'CASCADE' });
 CounselorInstitute.belongsTo(User, { foreignKey: 'counselor_id', as: 'counselor' });
 

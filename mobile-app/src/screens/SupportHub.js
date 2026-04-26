@@ -25,7 +25,8 @@ const getRisk = (level = '') => {
 // Contains a segmented control: [Counselor Support] [Medication]
 // Props: token, user, latestAssessment, onOpenCounselorDirectory
 // ─────────────────────────────────────────────────────────────────────────────
-export default function SupportHub({ token, user, latestAssessment, onOpenCounselorDirectory }) {
+export default function SupportHub({ token, user, latestAssessment, onOpenCounselorDirectory, navigation }) {
+  console.log(`[SupportHub.js] -> Checking navigation context. Object present: ${!!navigation}.`);
   const [segment, setSegment] = useState('counselor');
   // activeChat: null = hidden, { appointmentId, peerName } = show ChatScreen
   const [activeChat, setActiveChat] = useState(null);
@@ -56,7 +57,7 @@ export default function SupportHub({ token, user, latestAssessment, onOpenCounse
       {segment === 'counselor'
         ? <CounselorPanel token={token} user={user} latestAssessment={latestAssessment}
           currentUserId={user?.id} onOpenChat={(chat) => setActiveChat(chat)} />
-        : <MedicationPanel />
+        : <MedicationPanel token={token} navigation={navigation} />
       }
 
       {/* ── Chat Screen full-screen overlay ── */}
@@ -280,9 +281,40 @@ function CounselorPanel({ token, user, latestAssessment, currentUserId, onOpenCh
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MedicationPanel (placeholder)
+// MedicationPanel (Dynamic)
 // ─────────────────────────────────────────────────────────────────────────────
-function MedicationPanel() {
+function MedicationPanel({ token, navigation }) {
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchMeds = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/api/student/medications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPrescriptions(res.data.prescriptions || []);
+    } catch (err) {
+      console.log('[Mobile-App] -> Medication fetch failed:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchMeds();
+  }, [fetchMeds]);
+
+  if (loading) return (
+    <View style={styles.centered}>
+      <ActivityIndicator size="small" color={C.sage} />
+    </View>
+  );
+
+  if (prescriptions.length > 0) {
+    console.log(`[Mobile-App] -> Toggling Medication UI from 'Locked' to 'Active'.`);
+    return <ActivePrescriptionList data={prescriptions} />;
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.medicationContainer}>
       <Text style={styles.medicationTitle}>💊 Clinical Medication Tracking</Text>
@@ -318,6 +350,34 @@ function MedicationPanel() {
         All medication data is encrypted and only accessible to you and your assigned counselor.
       </Text>
     </ScrollView>
+  );
+}
+
+function ActivePrescriptionList({ data }) {
+  return (
+    <FlatList
+      data={data}
+      keyExtractor={item => item._id}
+      contentContainerStyle={styles.medicationContainer}
+      ListHeaderComponent={() => (
+        <>
+          <Text style={styles.medicationTitle}>📋 Active Prescriptions</Text>
+          <Text style={styles.medicationSubtitle}>Your clinical medication plan issued by your counselor.</Text>
+        </>
+      )}
+      renderItem={({ item }) => (
+        <View style={styles.prescriptionCard}>
+          <View style={styles.prescHeader}>
+            <Text style={styles.prescMedName}>{item.med_name}</Text>
+            <View style={styles.prescBadges}>
+               <View style={styles.dosagePill}><Text style={styles.pillText}>{item.dosage}</Text></View>
+            </View>
+          </View>
+          <Text style={styles.prescMeta}>Frequency: {item.slots?.join(', ')}</Text>
+          <Text style={styles.prescDuration}>Course: {new Date(item.start_date).toLocaleDateString()} — {new Date(item.end_date).toLocaleDateString()}</Text>
+        </View>
+      )}
+    />
   );
 }
 
@@ -426,4 +486,21 @@ const styles = StyleSheet.create({
   medicationInfoIcon: { fontSize: 28 },
   medicationInfoLabel: { fontSize: 11, fontWeight: '700', color: C.muted, textAlign: 'center', maxWidth: 80 },
   medicationDisclaimer: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 18, fontStyle: 'italic', paddingHorizontal: 8 },
+
+  // Active Prescription
+  prescriptionCard: {
+     backgroundColor: '#fff',
+     borderRadius: R.md,
+     padding: 20,
+     borderWidth: 1,
+     borderColor: C.border,
+     marginBottom: 16
+  },
+  prescHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  prescMedName: { fontSize: 18, fontWeight: '800', color: C.charcoal },
+  prescBadges: { flexDirection: 'row', gap: 6 },
+  dosagePill: { backgroundColor: C.sageLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.full },
+  pillText: { fontSize: 11, fontWeight: '800', color: C.sage },
+  prescMeta: { fontSize: 13, fontWeight: '700', color: C.muted, marginBottom: 4 },
+  prescDuration: { fontSize: 12, color: C.muted, fontStyle: 'italic' },
 });

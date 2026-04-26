@@ -86,4 +86,18 @@ const getFormSchema = async (req, res) => {
   }
 };
 
-module.exports = { createInstitute, getListInstitutes, saveFormSchema, getFormSchema };
+// ─── Get All Institutes (Discovery) ───
+// GET /api/institutes/all
+const getAllInstitutes = async (req, res) => {
+  try {
+    const institutes = await Institute.findAll({
+      attributes: ['id', 'name', 'type']
+    });
+    res.status(200).json({ institutes });
+  } catch (error) {
+    console.error('❌ Error fetching all institutes:', error.message);
+    res.status(500).json({ error: 'Failed to fetch institutes' });
+  }
+};
+
+module.exports = { createInstitute, getListInstitutes, saveFormSchema, getFormSchema, getAllInstitutes };

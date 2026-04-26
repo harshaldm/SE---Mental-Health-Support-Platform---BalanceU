@@ -43,8 +43,8 @@ const analyzeResponses = async (responses) => {
 
     logger.info(`[geminiAnalysis.js : analyzeResponses : 43] -> Sending prompt to Gemini...`);
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
     let result;
     try {
       result = await model.generateContent(prompt);
@@ -62,7 +62,7 @@ const analyzeResponses = async (responses) => {
     // Parse the JSON string
     const responseText = result.response.text();
     const rawText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     try {
       const parsed = JSON.parse(rawText);
       return parsed;

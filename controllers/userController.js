@@ -1,5 +1,6 @@
 const { User, Institute } = require('../models');
 const logger = require('../utils/logger');
+const bcrypt = require('bcryptjs');
 
 /**
  * GET /api/user/profile
@@ -64,6 +65,42 @@ exports.updateProfile = async (req, res) => {
     res.json({ message: 'Profile updated success', profile: updatedMeta });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+/**
+ * POST /api/user/change-password
+ * Changes the user's password verifying the current one.
+ */
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    console.log(`[userController.js] -> Processing password change for Admin ID: ${userId}.`);
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Incorrect current password' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    user.password_hash = newPasswordHash;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('❌ Error changing password:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
 };
