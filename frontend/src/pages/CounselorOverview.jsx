@@ -18,6 +18,7 @@ export default function CounselorOverview({ user, stats = {} }) {
       <header className="mb-12">
         <h1 className="text-4xl font-black mb-2 text-[#2C2C2C]">
           Welcome Back, {user?.full_name || 'Counselor'}
+          {console.log(`[CounselorOverview] -> Greeting rendered with Name: ${user?.full_name || 'Counselor'}.`)}
         </h1>
         <p className="text-[#7A7A6E] text-base font-medium">
           Here's what's happening across your institute today.

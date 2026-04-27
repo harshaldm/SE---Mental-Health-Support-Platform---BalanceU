@@ -61,7 +61,8 @@ export default function CounselorProfile({ setActiveNav }) {
       setProfForm(loaded);
       setOriginalForm(loaded);
       
-      console.log(`[CounselorProfile.jsx] -> Rendering profile view. Editable fields: [specialization, experience, bio].`);
+      console.log(`[Frontend] -> CounselorProfile received data: ${JSON.stringify(user)}`);
+      console.log(`[CounselorProfile.jsx] -> Identity signatures synced with user authentication records.`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -182,23 +183,28 @@ export default function CounselorProfile({ setActiveNav }) {
           <h2 className="text-xl font-black mb-6 text-[#556B5F] flex items-center gap-2">
             <User size={20} /> Account Context
           </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Full Name</label>
-              <div className="w-full bg-[#E0D9CE]/10 border rounded-2xl px-5 py-4 text-[#7A7A6E] font-bold" style={{ borderColor: S.border }}>
-                {user?.full_name || 'Missing Name Context'}
+          {!user ? (
+            <div className="py-20 text-center text-[#7A7A6E] font-bold italic">Synchronizing Signatures...</div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Full Name</label>
+                <div className="w-full bg-[#E0D9CE]/10 border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
+                  {user.full_name || '...'}
+                  {console.log(`[CounselorProfile] -> Account Context mapping Full Name: ${!!user.full_name}.`)}
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Platform Bound Email</label>
-              <div className="w-full bg-[#E0D9CE]/10 border rounded-2xl px-5 py-4 text-[#7A7A6E] font-bold" style={{ borderColor: S.border }}>
-                {user?.email}
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Official Email</label>
+                <div className="w-full bg-[#E0D9CE]/10 border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
+                  {user.email}
+                </div>
               </div>
+              <p className="text-xs text-[#7A7A6E] font-medium mt-4 italic text-center">
+                Global identity signatures are strictly read-only for traceability constraints.
+              </p>
             </div>
-            <p className="text-xs text-[#7A7A6E] font-medium mt-4 italic text-center">
-              Global identity signatures are strictly read-only for traceability constraints.
-            </p>
-          </div>
+          )}
         </div>
 
         {/* ── Section 3: Security Settings ── */}

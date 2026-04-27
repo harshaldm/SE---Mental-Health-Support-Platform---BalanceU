@@ -35,7 +35,10 @@ export default function AdminProfile() {
   const [currentOption, setCurrentOption] = useState('');
   
   useEffect(() => {
-    console.log(`[AdminProfile.jsx] -> Rendering Profile for ${user?.institute_name || user?.full_name}.`);
+    if (user) {
+      console.log(`[Frontend] -> AdminProfile received data: ${JSON.stringify(user)}`);
+      console.log("[AdminProfile.jsx] -> Identity fields mapped to Institute Registry.");
+    }
   }, [user]);
 
   const handlePasswordChange = async (e) => {
@@ -123,29 +126,35 @@ export default function AdminProfile() {
           <h2 className="text-xl font-black mb-6 text-[#556B5F] flex items-center gap-2">
             <User size={20} /> Administrative Identity
           </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Full Name</label>
-              <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
-                {user?.full_name || 'Not provided'}
+          {!user ? (
+            <div className="py-20 text-center text-[#7A7A6E] font-bold italic">Synchronizing Registry...</div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Institute Full Name</label>
+                <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
+                  {user.institute_name}
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Official Email</label>
-              <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
-                {user?.email}
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Official Institute Email</label>
+                <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
+                  {console.log("Profile Data received on Frontend:", user)}
+                  {console.log(`[AdminProfile.jsx] -> Rendering Official Email field with value: ${user.official_email}.`)}
+                  {user.official_email}
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Institute Target</label>
-              <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
-                {user?.institute_name || 'N/A'}
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Institute Type</label>
+                <div className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold" style={{ borderColor: S.border }}>
+                  {user.institute_type}
+                </div>
               </div>
+              <p className="text-xs text-[#7A7A6E] font-medium mt-4 italic text-center">
+                Identity parameters are locked to maintain institutional security constraints. Contact platform support if modifications are required.
+              </p>
             </div>
-            <p className="text-xs text-[#7A7A6E] font-medium mt-4 italic text-center">
-              Identity parameters are locked to maintain institutional security constraints. Contact platform support if modifications are required.
-            </p>
-          </div>
+          )}
         </div>
 
         {/* ── Security Block ── */}

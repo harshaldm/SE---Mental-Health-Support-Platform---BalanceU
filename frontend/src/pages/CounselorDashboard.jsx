@@ -152,6 +152,7 @@ export default function CounselorDashboard() {
     if (activeInstName) {
       console.log(`[CounselorDashboard.jsx] -> Sidebar branding updated: Active Institute set to ${activeInstName}.`);
     }
+    console.log(`[CounselorSidebar.jsx] -> Branding text wrap enabled. Truncation removed to match Admin dashboard aesthetics.`);
   }, [activeInstName]);
 
   return (
@@ -164,7 +165,7 @@ export default function CounselorDashboard() {
             <div className="w-8 h-8 rounded-lg bg-[#556B5F] flex items-center justify-center text-white font-black text-lg">B</div>
             <h2 className="font-black text-xl tracking-tight">Balance<span className="text-[#556B5F]">U</span></h2>
           </div>
-          <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em] truncate">{instName}</p>
+          <p className="text-[10px] font-black opacity-40 uppercase tracking-[0.2em] leading-relaxed break-words">{instName}</p>
         </div>
 
         <nav className="flex-1 space-y-2">

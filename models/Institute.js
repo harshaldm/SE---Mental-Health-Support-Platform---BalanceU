@@ -14,6 +14,10 @@ const Institute = sequelize.define('Institute', {
     type: DataTypes.STRING, // e.g. University, Coaching, etc.
     allowNull: false,
   },
+  official_email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   address: {
     type: DataTypes.TEXT,
     allowNull: true,

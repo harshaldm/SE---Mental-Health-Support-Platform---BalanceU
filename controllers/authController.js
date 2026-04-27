@@ -38,6 +38,7 @@ const registerAdmin = async (req, res) => {
       id: generatedInstituteId,
       name: institute_name,
       type: finalType,
+      official_email: email,
     });
 
     // Hash password
@@ -139,6 +140,18 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Fetch full user with institute details
+    const fullUser = await User.findByPk(user.id, {
+      attributes: ['id', 'email', 'role', 'full_name', 'institute_id', 'profile_metadata'],
+      include: [{ model: Institute, attributes: ['name', 'type', 'official_email'] }]
+    });
+
+    const userData = fullUser.toJSON();
+    userData.full_name = userData.full_name || userData.profile_metadata?.full_name || null;
+    userData.institute_name = userData.Institute?.name || null;
+    userData.institute_type = userData.Institute?.type || null;
+    userData.official_email = userData.Institute?.official_email || userData.email || null;
+
     // Generate JWT with user info in the payload
     const payload = {
       id: user.id,
@@ -152,13 +165,7 @@ const login = async (req, res) => {
     res.status(200).json({
       message: 'Login successful',
       token,
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        role: user.role, 
-        full_name: user.full_name,
-        institute_id: user.institute_id 
-      },
+      user: userData,
     });
   } catch (error) {
     console.error("Login Error:", error.message);
@@ -172,7 +179,7 @@ const getMe = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: ['id', 'email', 'role', 'full_name', 'institute_id', 'createdAt', 'profile_metadata'],
-      include: [{ model: Institute, attributes: ['name'] }]
+      include: [{ model: Institute, attributes: ['name', 'type', 'official_email'] }]
     });
 
     if (!user) {
@@ -180,8 +187,14 @@ const getMe = async (req, res) => {
     }
 
     const userData = user.toJSON();
+    userData.full_name = userData.full_name || userData.profile_metadata?.full_name || null;
     userData.institute_name = userData.Institute?.name || null;
+    userData.institute_type = userData.Institute?.type || null;
+    userData.official_email = userData.Institute?.official_email || userData.email || null;
 
+    console.log(`[AuthContext] -> Session Metadata found for: ${userData.email}. Name in metadata: ${userData.full_name}.`);
+    console.log(`[adminController.js] -> Profile fetch successful. Email included in payload: ${!!userData.official_email}. Data: ${JSON.stringify(userData)}`);
+    
     res.status(200).json({ user: userData });
   } catch (error) {
     console.error('❌ Error fetching profile:', error.message);
@@ -217,6 +230,7 @@ const registerCounselor = async (req, res) => {
 
     const counselor = await User.create({
       email,
+      full_name, // Set top-level full_name
       password_hash,
       role: 'Counselor',
       institute_id: null, // Set via counselor_institutes table after approval
