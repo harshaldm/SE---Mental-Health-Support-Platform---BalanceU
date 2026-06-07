@@ -30,6 +30,7 @@ export default function Login({ onLoginSuccess, setShowRegister }) {
       
       onLoginSuccess(token, user);
     } catch (error) {
+      console.error(">>> [LOGIN ERROR] Full Detail:", error);
       const serverMsg = error.response?.data?.error || error.response?.data?.message;
       
       // Production-friendly messaging

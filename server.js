@@ -40,10 +40,12 @@ const io = new Server(server, {
 
 // ─── Middleware ───
 app.use(cors({ 
-  origin: '*', 
+  origin: ['http://localhost:5173', 'http://localhost:8081'], 
+  credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'], 
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Active-Institute'] 
 }));
+console.log("[Connection] -> CORS origin 'localhost:8081' added to backend.");
 app.use(express.json());
 app.use('/uploads', (req, res, next) => {
   console.log(`[server.js] -> Serving static files from /uploads.`);

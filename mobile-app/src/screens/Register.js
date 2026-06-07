@@ -72,6 +72,7 @@ export default function Register({ setLoggedIn }) {
       // Typically pop back to login
       setLoggedIn && setLoggedIn(true);
     } catch (err) {
+      console.error(">>> [REGISTER ERROR] Full Detail:", err);
       Alert.alert('Registration Failed', err.message);
     }
   };

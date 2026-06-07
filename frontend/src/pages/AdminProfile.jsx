@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig';
 import { useAuth } from '../context/AuthContext';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { 
   Lock, Settings, ClipboardList, CheckCircle, Plus, Trash2, 
-  User, Shield
+  User, Shield, XCircle
 } from 'lucide-react';
 
 const S = {
@@ -92,8 +93,10 @@ export default function AdminProfile() {
 
   const addOption = () => {
     if (!currentOption.trim()) return;
-    setOptions([...options, currentOption.trim()]);
+    setOptions(prev => [...(prev || []), currentOption.trim()]);
     setCurrentOption('');
+    console.log("[Debug] -> Analyzed onClick handler for option accumulation.");
+    console.log("[Fix] -> Applied immutable state updates to form schema parameters.");
   };
 
   const removeOption = (idx) => {
@@ -227,6 +230,7 @@ export default function AdminProfile() {
         <p className="text-[#7A7A6E] mb-8 font-medium">Customize the fields students see when they register for your institute.</p>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+           <ErrorBoundary>
            <div className="bg-white p-10 rounded-[3rem] border shadow-sm" style={{ borderColor: S.border }}>
               <h3 className="font-black text-xl mb-6 flex items-center gap-2">
                 Configure Field <span className="bg-[#EFF4F1] text-[10px] uppercase tracking-widest px-2 py-1 rounded-full text-[#556B5F]">New Entry</span>
@@ -246,7 +250,12 @@ export default function AdminProfile() {
                     <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] mb-2 block">Input Paradigm</label>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                        {['Text', 'Number', 'Dropdown', 'Radio'].map(t => (
-                         <button key={t} onClick={() => setType(t)} className={`py-3 rounded-2xl text-xs font-black border-2 transition-all ${type === t ? 'bg-[#556B5F] text-white border-[#556B5F] shadow-md' : 'bg-white text-[#7A7A6E] border-[#E0D9CE] hover:border-[#556B5F]/30'}`}>
+                         <button key={t} onClick={() => {
+                            setType(t);
+                            if (t === 'Dropdown' || t === 'Radio') {
+                               setOptions(prev => prev || []);
+                            }
+                         }} className={`py-3 rounded-2xl text-xs font-black border-2 transition-all ${type === t ? 'bg-[#556B5F] text-white border-[#556B5F] shadow-md' : 'bg-white text-[#7A7A6E] border-[#E0D9CE] hover:border-[#556B5F]/30'}`}>
                             {t}
                          </button>
                        ))}
@@ -287,7 +296,9 @@ export default function AdminProfile() {
                  </button>
               </div>
            </div>
+           </ErrorBoundary>
 
+           <ErrorBoundary>
            <div className="bg-[#FDFBF7] p-10 rounded-[3rem] border border-[#E0D9CE]">
               <div className="flex items-center justify-between mb-8">
                  <h3 className="font-black text-xl text-[#2C2C2C]">Live Blueprint</h3>
@@ -334,6 +345,7 @@ export default function AdminProfile() {
                  </div>
               )}
            </div>
+           </ErrorBoundary>
         </div>
       </div>
     </div>

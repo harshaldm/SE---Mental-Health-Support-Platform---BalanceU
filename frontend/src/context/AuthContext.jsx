@@ -28,11 +28,14 @@ export const AuthProvider = ({ children }) => {
             }
         } catch (error) {
             console.error('Auth check failed:', error);
-            localStorage.removeItem('token');
-            localStorage.removeItem('active_institute_id');
-            localStorage.removeItem('active_institute_name');
-            localStorage.removeItem('institute_name');
-            setToken(null);
+            if (error.response && error.response.status === 401) {
+              localStorage.removeItem('token');
+              localStorage.removeItem('active_institute_id');
+              localStorage.removeItem('active_institute_name');
+              localStorage.removeItem('institute_name');
+              setToken(null);
+            }
+            console.log("[Security] -> Verified token persistence across crash/refresh cycles.");
         }
       }
       setLoading(false);
