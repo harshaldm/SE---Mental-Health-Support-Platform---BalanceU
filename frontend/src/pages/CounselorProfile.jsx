@@ -4,7 +4,7 @@ import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig';
 import { 
   Building2, CheckCircle, Clock, XCircle, Search, User, Lock, Edit3, Save, 
-  Settings, Award, X, Plus
+  Settings, Award, X, Plus, Eye, EyeOff
 } from 'lucide-react';
 import logger from '../utils/logger';
 
@@ -36,6 +36,9 @@ export default function CounselorProfile({ setActiveNav }) {
   // ─── Password State ───
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [passStatus, setPassStatus] = useState({ error: '', success: '', loading: false });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew,     setShowNew]     = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // ─── Institute Setup State ───
   const [myInstitutes, setMyInstitutes] = useState([]);
@@ -225,36 +228,55 @@ export default function CounselorProfile({ setActiveNav }) {
             )}
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Current Password</label>
-              <input 
-                type="password"
-                required
-                value={passwords.current}
-                onChange={e => setPasswords({ ...passwords, current: e.target.value })}
-                className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
-                style={{ borderColor: S.border }}
-              />
+              <div className="relative">
+                <input 
+                  type={showCurrent ? 'text' : 'password'}
+                  required
+                  value={passwords.current}
+                  onChange={e => setPasswords({ ...passwords, current: e.target.value })}
+                  className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 pr-12 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
+                  style={{ borderColor: S.border }}
+                />
+                <button type="button" onClick={() => setShowCurrent(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7A7A6E] hover:text-[#556B5F] transition-colors" tabIndex={-1}>
+                  {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Safe New Password</label>
-              <input 
-                type="password"
-                required
-                value={passwords.new}
-                onChange={e => setPasswords({ ...passwords, new: e.target.value })}
-                className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
-                style={{ borderColor: S.border }}
-              />
+              <div className="relative">
+                <input 
+                  type={showNew ? 'text' : 'password'}
+                  required
+                  value={passwords.new}
+                  onChange={e => setPasswords({ ...passwords, new: e.target.value })}
+                  className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 pr-12 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
+                  style={{ borderColor: S.border }}
+                />
+                <button type="button" onClick={() => setShowNew(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7A7A6E] hover:text-[#556B5F] transition-colors" tabIndex={-1}>
+                  {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs font-black uppercase tracking-widest text-[#7A7A6E] ml-2 mb-1 block">Confirm Safety</label>
-              <input 
-                type="password"
-                required
-                value={passwords.confirm}
-                onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
-                className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
-                style={{ borderColor: S.border }}
-              />
+              <div className="relative">
+                <input 
+                  type={showConfirm ? 'text' : 'password'}
+                  required
+                  value={passwords.confirm}
+                  onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
+                  className="w-full bg-[#FDFBF7] border rounded-2xl px-5 py-4 pr-12 text-[#2C2C2C] font-bold focus:outline-none focus:ring-2 focus:ring-[#556B5F]"
+                  style={{ borderColor: S.border }}
+                />
+                <button type="button" onClick={() => setShowConfirm(v => !v)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7A7A6E] hover:text-[#556B5F] transition-colors" tabIndex={-1}>
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {console.log('[UI/UX] -> Integrated inline visibility toggle nodes into password input fields.')}
             </div>
             <button 
               type="submit" 
