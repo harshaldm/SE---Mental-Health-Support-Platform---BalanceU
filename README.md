@@ -123,11 +123,13 @@ cd BalanceU
 ```
 
 ### Step 2: Set Up Backend
-```bash
-cd backend
+Run directly from the **root directory**:
+
+```
 npm install
 npm run dev
-# Server runs on http://localhost:5000
+# Server running at http://localhost:5000
+
 ```
 
 ### Step 3: Set Up Web Frontend (Admin & Counselor)
