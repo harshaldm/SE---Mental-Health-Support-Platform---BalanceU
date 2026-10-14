@@ -95,44 +95,22 @@ Ensure you have the following installed locally:
 
 ## 🔐 Environment Variables
 
-Create `.env` files in their respective directories following these examples:
+Create a single `.env` file in the **root directory** of the project:
 
-### 1. `backend/.env`
-```env
+```
 PORT=5000
-NODE_ENV=development
-
-# MongoDB Connection
 MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/balanceu?retryWrites=true&w=majority
+POSTGRES_URI=postgresql://postgres:<password>@<db-host>:5432/postgres
+JWT_SECRET=your_jwt_secret_key
+EMAIL_HOST=smtp.mailtrap.io
+EMAIL_PORT=2525
+EMAIL_USER=your_email_user
+EMAIL_PASS=your_email_pass
+GEMINI_API_KEY=your_gemini_api_key
 
-# Supabase Credentials
-SUPABASE_URL=https://<your-project-ref>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
-SUPABASE_JWT_SECRET=your-supabase-jwt-secret
-
-# Google Gemini API
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Client URLs (for CORS whitelist)
-CLIENT_URL_WEB=http://localhost:5173
-CLIENT_URL_MOBILE=http://localhost:8081
 ```
 
-### 2. `frontend/.env`
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-### 3. `mobile-app/.env`
-```env
-EXPO_PUBLIC_API_URL=http://localhost:5000/api
-EXPO_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-```
-
-> **Note on Mobile Testing:** When testing on a physical mobile device via Expo Go, replace `localhost` with your machine's local network IP address (e.g., `http://192.168.1.50:5000/api`).
+> **Security Note:** Never commit your actual `.env` file to source control. Ensure `.env` is listed in your `.gitignore`.
 
 ---
 
